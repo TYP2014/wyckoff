@@ -118,10 +118,8 @@
       <button data-tf="1mo">M</button>
     </div>
     <div class="grupo">
-      <span class="et">Fibonacci</span>
-      <button id="fibAuto" title="Último tramo relevante del zigzag">Auto</button>
-      <button id="fibManual" title="Marca dos puntos en el gráfico: inicio y fin del tramo">Manual</button>
-      <button id="fibOff">Quitar</button>
+      <span class="et">Fibo automático</span>
+      <button id="fibAuto" title="Fibonacci automático sobre el último tramo del zigzag (se enciende y se apaga)">Auto</button>
     </div>
     <div class="grupo">
       <span class="et">Dibujar</span>
@@ -129,6 +127,7 @@
       <button id="t_horiz" title="Línea horizontal de lado a lado: un clic al precio">Horizontal</button>
       <button id="t_rect" title="Rectángulo: arrastra de una esquina a la opuesta">Rectángulo</button>
       <button id="t_elipse" title="Elipse o círculo: arrastra de un extremo al otro">Elipse</button>
+      <button id="t_fib" title="Fibonacci: arrastra del INICIO al FINAL del tramo (o clic y clic). Cerca del máximo o mínimo de una vela se ajusta a él">Fibonacci</button>
       <span id="colores"></span>
       <button id="iman" title="Imán: ajusta los puntos al máximo o mínimo de la vela">Imán</button>
       <button id="prolongar" title="Prolonga hacia la derecha la línea seleccionada" disabled>Prolongar</button>
@@ -170,7 +169,7 @@
       <section>
         <h2>Mis dibujos</h2>
         <div id="dibujos"></div>
-        <p class="nota">Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Se puede dibujar también en el volumen. Clic en una vela: recuadro con sus datos.</p>
+        <p class="nota">Fibonacci es una herramienta más: se selecciona, se mueve, se cambia por sus extremos y se borra igual. Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Se puede dibujar también en el volumen. Clic en una vela: recuadro con sus datos.</p>
       </section>
       <section>
         <h2>Soportes y resistencias automáticos </h2>
@@ -206,9 +205,9 @@
   const st = {
     sym: null, info: null, tf: store.get('tf', '1d'),
     datos: {},                       // tf -> barras [{time,open,high,low,close,volume}]
-    fibModo: store.get('fibModo', 'auto'),   // auto | manual | off
+    fibAuto: store.get('fibAuto', false), tramoAuto: null,
     sens: store.get('sens', 5), zig: store.get('zig', false),
-    modo: null, puntoA: null,        // modo de clic: 'fibA' | 'fibB' | 'nivel'
+    modo: null, puntoA: null,        // herramienta de dibujo armada
     lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
     lista: [], grupo: store.get('grupo', null), color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
   };
@@ -321,29 +320,23 @@
 
   function tramoActual(piv) {
     const b = barras();
-    if (st.fibModo === 'manual') {
-      const m = store.get(claveFib(), null);
-      if (m) return { a: m.a, b: m.b, manual: true };
-    }
-    if (st.fibModo === 'off' || piv.length < 2) return null;
+    if (!st.fibAuto || piv.length < 2) return null;
     const A = piv[piv.length - 2], B = piv[piv.length - 1];
-    return { a: { t: b[A.i].time, p: A.p }, b: { t: b[B.i].time, p: B.p }, manual: false };
+    return { a: { t: b[A.i].time, p: A.p }, b: { t: b[B.i].time, p: B.p } };
   }
 
   function pintarFib(piv) {
     st.lineasFib.forEach(l => velas.removePriceLine(l)); st.lineasFib = [];
-    const tr = tramoActual(piv);
-    $('fibAuto').classList.toggle('on', st.fibModo === 'auto');
-    $('fibManual').classList.toggle('on', st.fibModo === 'manual' && !st.modo);
-    if (!tr) { st.marcasFib = []; ponerMarcas(); $('fibTabla').className = 'vacio'; $('fibTabla').textContent = 'Sin tramo'; $('fibTipo').textContent = ''; return; }
-    const sube = tr.b.p > tr.a.p, filas = [];
+    const tr = st.tramoAuto = tramoActual(piv);
+    $('fibAuto').classList.toggle('on', st.fibAuto);
+    if (!tr) { st.marcasFib = []; ponerMarcas(); return tablaFib(); }
+    const sube = tr.b.p > tr.a.p;
     FIB.forEach(r => {
       const precio = tr.b.p - r * (tr.b.p - tr.a.p), zona = r >= 0.382 && r <= 0.618;
       st.lineasFib.push(velas.createPriceLine({
         price: precio, color: zona ? C.amber : 'rgba(201,133,0,.6)', lineWidth: 1,
         lineStyle: zona ? LC.LineStyle.Solid : LC.LineStyle.Dotted, axisLabelVisible: zona, title: nf(r * 100, 1) + ' %',
       }));
-      filas.push(`<tr class="${zona ? 'zona' : ''}"><td>${nf(r * 100, 1)} %</td><td>${nf(precio)}</td></tr>`);
     });
     const orden = [tr.a, tr.b].sort((x, y) => (x.t > y.t ? 1 : -1));
     st.marcasFib = (orden.map(p => ({
@@ -351,8 +344,18 @@
       shape: (p === tr.a) === sube ? 'arrowUp' : 'arrowDown', text: p === tr.a ? 'A' : 'B',
     })));
     ponerMarcas();
-    $('fibTipo').textContent = (tr.manual ? '· manual' : '· auto') + (sube ? ' · tramo alcista' : ' · tramo bajista');
-    $('fibTabla').className = ''; $('fibTabla').innerHTML = `<table>${filas.join('')}</table>`;
+    tablaFib();
+  }
+  // Tabla de niveles: la del Fibonacci dibujado que esté seleccionado (o el último dibujado); si no hay, la del automático
+  function tablaFib() {
+    const sel = dibs[st.sel] && dibs[st.sel].tipo === 'fib' ? dibs[st.sel] : dibs.filter(d => d.tipo === 'fib').pop();
+    const tr = sel || st.tramoAuto;
+    if (!tr) { $('fibTabla').className = 'vacio'; $('fibTabla').textContent = 'Sin tramo: pulsa «Fibonacci» y marca inicio y final'; $('fibTipo').textContent = ''; return; }
+    $('fibTipo').textContent = (sel ? '· dibujado' : '· auto') + (tr.b.p > tr.a.p ? ' · tramo alcista' : ' · tramo bajista');
+    $('fibTabla').className = ''; $('fibTabla').innerHTML = '<table>' + FIB.map(r => {
+      const zona = r >= 0.382 && r <= 0.618;
+      return `<tr class="${zona ? 'zona' : ''}"><td>${nf(r * 100, 1)} %</td><td>${nf(tr.b.p - r * (tr.b.p - tr.a.p))}</td></tr>`;
+    }).join('') + '</table>';
   }
 
   // ---------- cartera ficticia: órdenes y posiciones de este valor sobre el gráfico
@@ -453,6 +456,13 @@
       store.get(`niveles:${st.sym}`, []).forEach(n => D.push({ tipo: 'horiz', p: typeof n === 'number' ? n : n.p, c: (n && n.c) || '#4c8dff' }));
       if (D.length) store.set(claveDib(), D);
     }
+    let migrado = false;
+    TFS.forEach(tf => {
+      const m = store.get(`fib:${st.sym}:${tf}`, null); if (!m || !m.a || !m.b) return;
+      D.push({ tipo: 'fib', a: { t: ep(m.a.t), p: m.a.p }, b: { t: ep(m.b.t), p: m.b.p }, tf, c: '#c98500' });
+      store.del(`fib:${st.sym}:${tf}`); migrado = true;
+    });
+    if (migrado) store.set(claveDib(), D);
     dibs = D; st.sel = -1; st.previa = null;
   }
   const guardarDibs = () => { store.set(claveDib(), dibs); pintarDibujos(); };
@@ -483,6 +493,9 @@
     if (d.ext && x2 > x1 && w > x2) { y2 = y2 + (y2 - y1) / (x2 - x1) * (w - x2); x2 = w; }
     return [x1, y1, x2, y2];
   }
+  function nivelesFib(d) {
+    return FIB.map(r => { const p = d.b.p - r * (d.b.p - d.a.p); return { r, p, y: velas.priceToCoordinate(p), zona: r >= 0.382 && r <= 0.618 }; }).filter(n => n.y != null);
+  }
   function trazar(ctx, d, w, sel) {
     const g = geo(d); if (!g) return;
     ctx.save(); ctx.strokeStyle = d.c; ctx.fillStyle = d.c; ctx.lineWidth = sel ? 3 : 2;
@@ -492,6 +505,18 @@
     } else if (d.tipo === 'linea') {
       const [x1, y1, x2, y2] = finLinea(d, g, w);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    } else if (d.tipo === 'fib') {               // niveles desde el tramo hacia la derecha; 0 % en el final, 100 % en el inicio
+      const x0 = Math.min(g.xa, g.xb), N = nivelesFib(d);
+      ctx.save(); ctx.setLineDash([5, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.xa, g.ya); ctx.lineTo(g.xb, g.yb); ctx.stroke(); ctx.restore();
+      const z1 = N.find(n => n.r === 0.382), z2 = N.find(n => n.r === 0.618);
+      if (z1 && z2) { ctx.globalAlpha = 0.08; ctx.fillRect(x0, Math.min(z1.y, z2.y), w - x0, Math.abs(z2.y - z1.y)); ctx.globalAlpha = 1; }
+      ctx.font = '600 11px sans-serif'; ctx.textAlign = 'left';
+      N.forEach(n => {
+        ctx.lineWidth = n.zona ? (sel ? 3 : 2) : 1; ctx.globalAlpha = n.zona ? 1 : 0.75;
+        ctx.beginPath(); ctx.moveTo(x0, n.y); ctx.lineTo(w, n.y); ctx.stroke();
+        ctx.fillText(nf(n.r * 100, 1) + ' %   ' + nf(n.p), Math.max(4, x0 + 4), n.y - 3);
+      });
+      ctx.globalAlpha = 1;
     } else {
       ctx.beginPath();
       if (d.tipo === 'rect') ctx.rect(Math.min(g.xa, g.xb), Math.min(g.ya, g.yb), Math.abs(g.xb - g.xa), Math.abs(g.yb - g.ya));
@@ -565,6 +590,11 @@
         const [x1, y1, x2, y2] = finLinea(d, g, w), dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
         const u = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0;
         ok = Math.hypot(x - (x1 + u * dx), y - (y1 + u * dy)) <= T;
+      } else if (d.tipo === 'fib') {
+        const dx = g.xb - g.xa, dy = g.yb - g.ya, L = dx * dx + dy * dy;
+        const u = L ? Math.max(0, Math.min(1, ((x - g.xa) * dx + (y - g.ya) * dy) / L)) : 0;
+        ok = Math.hypot(x - (g.xa + u * dx), y - (g.ya + u * dy)) <= T
+          || (x >= Math.min(g.xa, g.xb) - T && nivelesFib(d).some(n => Math.abs(y - n.y) <= T));
       } else if (d.tipo === 'rect') {
         const xi = Math.min(g.xa, g.xb), xs = Math.max(g.xa, g.xb), yi = Math.min(g.ya, g.yb), ys = Math.max(g.ya, g.yb);
         const dentro = x >= xi - T && x <= xs + T && y >= yi - T && y <= ys + T;
@@ -579,7 +609,7 @@
     return null;
   }
 
-  const NOMBRE = { linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse' };
+  const NOMBRE = { linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse', fib: 'Fibonacci' };
   function pintarDibujos() {
     if (st.sel >= dibs.length) st.sel = -1;
     const sel = dibs[st.sel];
@@ -590,6 +620,7 @@
       `<div class="nivel fila ${k === st.sel ? 'sel' : ''}" data-k="${k}"><i style="background:${d.c}"></i><span>${NOMBRE[d.tipo]}
        <small>${d.pn ? 'en volumen' : d.tipo === 'horiz' ? nf(d.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
       : '<div class="vacio">Ninguno todavía</div>';
+    tablaFib();
     repintar();
   }
   function borrarDib(k) { if (!dibs[k]) return; dibs.splice(k, 1); st.sel = -1; guardarDibs(); }
@@ -662,15 +693,14 @@
   $('info').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') cerrarInfo(); });
 
   // ---------- ratón sobre el gráfico: dibujar, seleccionar, mover, cambiar de tamaño
-  const FORMAS = ['linea', 'horiz', 'rect', 'elipse'];
+  const FORMAS = ['linea', 'horiz', 'rect', 'elipse', 'fib'];
   let arr = null;                                // gesto en curso
   function aviso(txt) { $('aviso').style.display = txt ? 'block' : 'none'; $('aviso').textContent = txt || ''; }
   function setModo(m) {
     st.modo = m; st.puntoA = null; st.previa = null; arr = null;
     chart.applyOptions({ handleScroll: !m, handleScale: !m });      // mientras se dibuja, el gráfico no se mueve
     FORMAS.forEach(t => $('t_' + t).classList.toggle('armado', m === t));
-    $('fibManual').classList.toggle('armado', m === 'fibA' || m === 'fibB');
-    aviso(m === 'fibA' ? 'Fibonacci: haz clic en el INICIO del tramo' : m === 'fibB' ? 'Ahora haz clic en el FINAL del tramo'
+    aviso(m === 'fib' ? 'Fibonacci: arrastra del INICIO al FINAL del tramo (o clic en el inicio y clic en el final). Esc cancela'
       : m === 'horiz' ? 'Haz clic a la altura del precio' : FORMAS.includes(m) ? 'Arrastra de un punto a otro (o clic y clic). Esc cancela' : '');
     repintar();
   }
@@ -694,24 +724,24 @@
     return { x, y, i, p, pn, cx: e.clientX, cy: e.clientY };
   }
   function nueva(a, c, horizontal) {
-    const d = { tipo: st.modo, a: dePos(a.i, a.p), b: dePos(c.i, horizontal ? a.p : c.p), tf: st.tf, c: st.color };
+    const f = st.modo === 'fib';
+    const d = { tipo: st.modo, a: dePos(a.i, f ? pegar(a) : a.p), b: dePos(c.i, horizontal ? a.p : f ? pegar(c) : c.p), tf: st.tf, c: st.color };
     if (a.pn) d.pn = 1;
     return d;
   }
   function terminar(d) { dibs.push(d); st.sel = dibs.length - 1; setModo(null); guardarDibs(); }
-  function fijarFib(m) {                         // el Fibonacci manual sí se ajusta siempre al máximo o mínimo de la vela
-    const b = barras(), v = b[Math.min(m.i, b.length - 1)];
-    const pt = { t: v.time, p: Math.abs(m.p - v.high) < Math.abs(m.p - v.low) ? v.high : v.low };
-    if (st.modo === 'fibA') { st.puntoA = pt; st.modo = 'fibB'; aviso('Ahora haz clic en el FINAL del tramo'); return; }
-    if (pt.t === st.puntoA.t) return;
-    store.set(claveFib(), { a: st.puntoA, b: pt });
-    st.fibModo = 'manual'; store.set('fibModo', 'manual'); setModo(null); pintarAnalisis();
+  // Fibonacci: si el punto está cerca del máximo o del mínimo de la vela, se ajusta a él; si no, queda donde se marca
+  function pegar(m) {
+    const b = barras(); if (m.pn || m.i > b.length - 1) return m.p;
+    const v = b[m.i], yh = velas.priceToCoordinate(v.high), yl = velas.priceToCoordinate(v.low);
+    const dh = yh == null ? 1e9 : Math.abs(m.y - yh), dl = yl == null ? 1e9 : Math.abs(m.y - yl);
+    return Math.min(dh, dl) > 14 ? m.p : dh <= dl ? v.high : v.low;
   }
 
   $('graf').addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     const m = pos(e); if (!m) return;
-    if (st.modo) { if (st.puntoA && st.puntoA.pn !== m.pn) return; arr = { tipo: 'crear', ini: m }; return; }
+    if (st.modo) { if ((st.puntoA && st.puntoA.pn !== m.pn) || (st.modo === 'fib' && m.pn)) return; arr = { tipo: 'crear', ini: m }; return; }
     const h = tocar(m.x, m.y, m.pn);
     if (!h) { arr = { tipo: 'vacio', ini: m }; return; }
     const d = dibs[h.k]; st.sel = h.k;
@@ -729,8 +759,9 @@
       const d = dibs[arr.k], o = arr.o, di = m.i - arr.ini.i, dp = m.p - arr.ini.p; arr.movido = true;
       if (d.tipo === 'horiz') d.p = Math.round((st.iman ? m.p : o.p + dp) * 100) / 100;
       else {
-        if (arr.parte === 'a') { d.a = dePos(m.i, m.p); d.b = dePos(o.ib, o.pb); }
-        else if (arr.parte === 'b') { d.a = dePos(o.ia, o.pa); d.b = dePos(m.i, e.shiftKey && d.tipo === 'linea' ? o.pa : m.p); }
+        const pm = d.tipo === 'fib' ? pegar(m) : m.p;
+        if (arr.parte === 'a') { d.a = dePos(m.i, pm); d.b = dePos(o.ib, o.pb); }
+        else if (arr.parte === 'b') { d.a = dePos(o.ia, o.pa); d.b = dePos(m.i, e.shiftKey && d.tipo === 'linea' ? o.pa : pm); }
         else { d.a = dePos(o.ia + di, o.pa + dp); d.b = dePos(o.ib + di, o.pb + dp); }
         d.tf = st.tf;
       }
@@ -755,11 +786,10 @@
       return;
     }
     if (!m) return;
-    if (st.modo === 'fibA' || st.modo === 'fibB') { if (mov <= 6 && !m.pn) fijarFib(m); return; }
     if (st.modo === 'horiz') return terminar(Object.assign({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color }, m.pn ? { pn: 1 } : {}));
     const sh = e.shiftKey && st.modo === 'linea';
     if (mov > 6) return terminar(nueva(g.ini, m, sh));                     // arrastrando
-    if (!st.puntoA) { st.puntoA = m; aviso('Ahora haz clic en el segundo punto'); return; }   // clic y clic
+    if (!st.puntoA) { st.puntoA = m; aviso(st.modo === 'fib' ? 'Ahora haz clic en el FINAL del tramo' : 'Ahora haz clic en el segundo punto'); return; }   // clic y clic
     if (st.puntoA.i === m.i && st.puntoA.p === m.p) return;
     terminar(nueva(st.puntoA, m, sh));
   });
@@ -775,9 +805,7 @@
     const tf = e.target.dataset.tf; if (!tf || !st.datos[tf]) return;
     st.tf = tf; store.set('tf', tf); setModo(null); pintar(true);
   });
-  $('fibAuto').onclick = () => { st.fibModo = 'auto'; store.set('fibModo', 'auto'); setModo(null); pintarAnalisis(); };
-  $('fibOff').onclick = () => { st.fibModo = 'off'; store.set('fibModo', 'off'); store.del(claveFib()); setModo(null); pintarAnalisis(); };
-  $('fibManual').onclick = () => setModo(st.modo === 'fibA' || st.modo === 'fibB' ? null : 'fibA');
+  $('fibAuto').onclick = () => { st.fibAuto = !st.fibAuto; store.set('fibAuto', st.fibAuto); pintarAnalisis(); };
   FORMAS.forEach(t => { $('t_' + t).onclick = () => setModo(st.modo === t ? null : t); });
   $('sens').value = String(st.sens);
   $('sens').onchange = e => { st.sens = +e.target.value; store.set('sens', st.sens); pintarAnalisis(); };
