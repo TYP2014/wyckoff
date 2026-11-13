@@ -28,18 +28,20 @@ CONFIG = ROOT / "config" / "tickers.json"
 def proveedor_yfinance(symbol: str, interval: str) -> pd.DataFrame:
     import yfinance as yf
 
-    period = "730d" if interval == "60m" else "max"
+    # 60m: Yahoo da como mucho ~730 dias; en valores recientes hay que pedir menos
+    periodos = ["730d", "1y", "6mo", "3mo", "1mo"] if interval == "60m" else ["max"]
     ultimo = None
     for intento in range(3):  # Yahoo a veces corta: reintentos con espera
-        try:
-            df = yf.Ticker(symbol).history(
-                period=period, interval=interval, auto_adjust=False, actions=False
-            )
-            if len(df):
-                return df[["Open", "High", "Low", "Close", "Volume"]]
-            ultimo = RuntimeError("sin datos")
-        except Exception as e:
-            ultimo = e
+        for period in periodos:
+            try:
+                df = yf.Ticker(symbol).history(
+                    period=period, interval=interval, auto_adjust=False, actions=False
+                )
+                if len(df):
+                    return df[["Open", "High", "Low", "Close", "Volume"]]
+                ultimo = RuntimeError("sin datos")
+            except Exception as e:
+                ultimo = e
         time.sleep(3 * (intento + 1))
     raise RuntimeError(f"{symbol} {interval}: {ultimo}")
 
@@ -122,9 +124,14 @@ def actualizar(symbol: str) -> None:
     guardar(symbol, "1wk", a_barras(agrupar(diario, "W-MON"), False))
     guardar(symbol, "1mo", a_barras(agrupar(diario, "MS"), False))
 
-    h = limpiar(sin_zona(PROVEEDOR(symbol, "60m")))
-    barras_60 = fusionar_60m(symbol, a_barras(h, True))
-    guardar(symbol, "60m", barras_60)
+    try:
+        nuevas_60 = a_barras(limpiar(sin_zona(PROVEEDOR(symbol, "60m"))), True)
+    except Exception as e:  # sin 60m no se pierde el resto
+        print(f"AVISO {symbol}: 60m no disponible ({e})", file=sys.stderr)
+        nuevas_60 = []
+    barras_60 = fusionar_60m(symbol, nuevas_60)
+    if barras_60:
+        guardar(symbol, "60m", barras_60)
 
     print(f"OK {symbol}: diario {len(diario)} barras "
           f"({diario.index[0].date()} -> {diario.index[-1].date()}), 60m {len(barras_60)} barras")
