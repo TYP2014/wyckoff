@@ -7,7 +7,8 @@ Criterios (version inicial, estandar; se ajustan con las indicaciones del usuari
  3. Eventos: SC, AR, ST, Spring, Test, SOS, LPS; y de distribucion para descartar: UT, SOW, LPSY.
  4. Fibonacci: precio en el retroceso 38,2-61,8 % del ultimo tramo alcista semanal.
  5. Soportes y resistencias por repeticion de toques (los mismos que dibuja el graficador). Avisos solo en
-    niveles con 4 toques o mas y solo si el precio del dia los ha tocado (a menos de 0,1 ATR) o los ha roto.
+    valores con tendencia mayor alcista, solo llegadas a soporte, en niveles con 4 toques o mas
+    y solo si el minimo del dia ha tocado el nivel (a menos de 0,1 ATR).
  6. Puntuacion y lista de candidatas con el motivo de cada aviso.
 
 Herramienta de apoyo a la decision: no ejecuta ordenes ni es asesoramiento financiero.
@@ -305,8 +306,9 @@ def analizar(info):
 
     niveles = niveles_auto(d, a)
     r["niveles"] = [{"p": z["p"], "n": z["n"], "sop": z["sop"]} for z in niveles]
-    r["avisos"] = avisos_niveles(d, a, niveles)
-    en_sop = any(x["tipo"] == "en_soporte" for x in r["avisos"])
+    # avisos: solo con tendencia mayor alcista y solo llegadas a soporte (donde se busca entrada)
+    r["avisos"] = [x for x in avisos_niveles(d, a, niveles) if x["tipo"] == "en_soporte"] if mayor else []
+    en_sop = bool(r["avisos"])
     if en_sop:
         puntos += 1
 
