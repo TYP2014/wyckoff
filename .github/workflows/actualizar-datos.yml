@@ -24,6 +24,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python scripts/update_data.py
       - name: Guardar datos en el repositorio
+        if: always()   # si algún valor falla, se guardan los demás
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
