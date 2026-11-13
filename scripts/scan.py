@@ -6,7 +6,8 @@ Criterios (version inicial, estandar; se ajustan con las indicaciones del usuari
  2. Rango de trading en diario: tramo lateral de 30 a 150 velas con al menos 2 toques arriba y 2 abajo.
  3. Eventos: SC, AR, ST, Spring, Test, SOS, LPS; y de distribucion para descartar: UT, SOW, LPSY.
  4. Fibonacci: precio en el retroceso 38,2-61,8 % del ultimo tramo alcista semanal.
- 5. Soportes y resistencias por repeticion de toques (los mismos que dibuja el graficador) y avisos de llegada.
+ 5. Soportes y resistencias por repeticion de toques (los mismos que dibuja el graficador). Avisos solo en
+    niveles con 4 toques o mas y solo si el precio del dia los ha tocado (a menos de 0,1 ATR) o los ha roto.
  6. Puntuacion y lista de candidatas con el motivo de cada aviso.
 
 Herramienta de apoyo a la decision: no ejecuta ordenes ni es asesoramiento financiero.
@@ -259,13 +260,15 @@ def avisos_niveles(b, a, niveles):
     c, h, l, A, out = b["c"], b["h"], b["l"], a[-1], []
     for z in niveles:
         p, n = z["p"], z["n"]
+        if n < 4:               # solo niveles con 4 toques o mas
+            continue
         if c[-2] < p and c[-1] > p + 0.4 * A:
             out.append({"tipo": "rompe_resistencia", "p": p, "n": n, "txt": f"Rompe la resistencia {fm(p)} (×{n})"})
         elif c[-2] > p and c[-1] < p - 0.4 * A:
             out.append({"tipo": "pierde_soporte", "p": p, "n": n, "txt": f"Pierde el soporte {fm(p)} (×{n})"})
-        elif z["sop"] and l[-1] <= p + 0.4 * A and c[-1] >= p - 0.4 * A:
+        elif z["sop"] and l[-1] <= p + 0.1 * A and c[-1] >= p - 0.4 * A:      # el minimo del dia toca el nivel
             out.append({"tipo": "en_soporte", "p": p, "n": n, "txt": f"Llega al soporte {fm(p)} (×{n})"})
-        elif not z["sop"] and h[-1] >= p - 0.4 * A and c[-1] <= p + 0.4 * A:
+        elif not z["sop"] and h[-1] >= p - 0.1 * A and c[-1] <= p + 0.4 * A:  # el maximo del dia toca el nivel
             out.append({"tipo": "en_resistencia", "p": p, "n": n, "txt": f"Llega a la resistencia {fm(p)} (×{n})"})
     return out
 
