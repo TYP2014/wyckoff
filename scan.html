@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buscador Wyckoff – Avisos</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #fff; --panel: #f4f6f8; --line: #d5dbe3; --txt: #1c2330; --dim: #5f6b7a;
+    --up: #12967e; --down: #e0443e; --amber: #c98500; --accent: #4c8dff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+    font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .fecha { color: var(--dim); font-size: 13px; }
+  header .der { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  button, a.btn { font: inherit; color: var(--txt); background: #fff; border: 1px solid var(--line); border-radius: 6px;
+    padding: 5px 11px; cursor: pointer; text-decoration: none; display: inline-block; }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { max-width: 1250px; margin: 0 auto; padding: 14px 20px 40px; }
+  h2 { font-size: 15px; margin: 26px 0 4px; }
+  h2 small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+  p.exp { color: var(--dim); font-size: 13px; margin: 0 0 10px; }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+  .tarjeta { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
+  .tarjeta.cand { border-color: var(--up); box-shadow: 0 0 0 1px var(--up) inset; }
+  .cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .cab b { font-size: 16px; } .cab .nom { color: var(--dim); }
+  .cab .pre { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--amber); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+  .chip b { color: var(--dim); font-weight: 600; margin-right: 4px; }
+  .chip.fase { background: var(--panel); font-weight: 600; }
+  .chip.pts { background: #1c2330; color: #fff; border-color: #1c2330; }
+  ul { margin: 6px 0 8px; padding-left: 18px; } li { margin: 2px 0; }
+  li.av { color: var(--accent); list-style: "→ "; font-weight: 600; }
+  li.malo { color: var(--down); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--dim); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 8px; border-bottom: 1px solid #eef1f4; vertical-align: top; }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td a { color: var(--txt); font-weight: 600; text-decoration: none; } td a:hover { text-decoration: underline; }
+  .vacio { color: var(--dim); padding: 10px 0; }
+  footer { color: var(--dim); font-size: 12px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Buscador Wyckoff</h1>
+  <span class="fecha" id="fecha"></span>
+  <div class="der">
+    <span id="mercados"></span>
+    <a class="btn" href="index.html">Graficador</a>
+  </div>
+</header>
+<main>
+  <h2>Candidatas <small id="nCand"></small></h2>
+  <p class="exp">Tendencia mayor alcista (mensual y semanal), sin señales de distribución y con spring, test, señal de fortaleza o apoyo reciente, o bien llegada a soporte dentro de un rango o de la zona Fibonacci.</p>
+  <div class="rejilla" id="cand"></div>
+
+  <h2>Avisos de niveles de hoy <small id="nAvi"></small></h2>
+  <p class="exp">Valores que hoy han llegado a un soporte o resistencia con varios toques, o que lo han roto. El número entre paréntesis son los toques.</p>
+  <div id="avisos"></div>
+
+  <h2>En seguimiento <small id="nSeg"></small></h2>
+  <p class="exp">Tienen algún elemento (rango, spring, zona Fibonacci…) pero no cumplen todavía todo lo exigido a una candidata.</p>
+  <div class="rejilla" id="seg"></div>
+
+  <h2>Descartadas por señales de distribución <small id="nDes"></small></h2>
+  <div id="desc"></div>
+
+  <footer>Criterios estándar de Wyckoff, versión inicial pendiente de ajustar. Herramienta personal de apoyo a la decisión: no ejecuta órdenes ni es asesoramiento financiero.</footer>
+</main>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const nf = x => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cls = t => t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : t === 'rango' ? 'flat' : '';
+  const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
+  const MALOS = ['Upthrust', 'Señal de debilidad', 'Último punto de oferta'];
+  let datos = [], mercado = 'Todos';
+
+  const chips = x => `<div class="chips">
+    <span class="chip"><b>M</b><span class="${cls(x.tendM)}">${cap(x.tendM)}</span></span>
+    <span class="chip"><b>S</b><span class="${cls(x.tendS)}">${cap(x.tendS)}</span></span>
+    <span class="chip"><b>D</b><span class="${cls(x.tendD)}">${cap(x.tendD)}</span></span>
+    <span class="chip fase">${x.fase}</span><span class="chip pts">${x.puntos} puntos</span></div>`;
+  const tarjeta = x => `<div class="tarjeta ${x.candidata ? 'cand' : ''}">
+    <div class="cab"><b>${x.symbol}</b><span class="nom">${x.nombre} · ${x.mercado}</span>
+      <span class="pre">${nf(x.cierre)} <span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></span></div>
+    ${chips(x)}
+    <ul>${x.motivos.map(m => `<li class="${MALOS.some(k => m.startsWith(k)) ? 'malo' : ''}">${m}</li>`).join('')}
+        ${x.avisos.map(a => `<li class="av">${a.txt.replace('.', ',')}</li>`).join('')}</ul>
+    <a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}">Ver gráfico</a></div>`;
+  const fila = (x, texto) => `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
+    <td class="n">${nf(x.cierre)}<br><span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></td>
+    <td>${texto}</td>
+    <td><span class="${cls(x.tendM)}">${cap(x.tendM)}</span> / <span class="${cls(x.tendS)}">${cap(x.tendS)}</span></td></tr>`;
+  const tabla = (filas, col) => filas.length ? `<table><tr><th>Valor</th><th>Cierre</th><th>${col}</th><th>Mensual / semanal</th></tr>${filas.join('')}</table>` : '<div class="vacio">Ninguno hoy</div>';
+
+  function pintar() {
+    const D = datos.filter(x => mercado === 'Todos' || x.mercado === mercado);
+    const cand = D.filter(x => x.candidata), desc = D.filter(x => x.descartada);
+    const seg = D.filter(x => !x.candidata && !x.descartada && x.puntos >= 5);
+    const avi = D.filter(x => x.avisos.length);
+    $('nCand').textContent = `(${cand.length})`; $('nSeg').textContent = `(${seg.length})`;
+    $('nDes').textContent = `(${desc.length})`; $('nAvi').textContent = `(${avi.length})`;
+    $('cand').innerHTML = cand.map(tarjeta).join('') || '<div class="vacio">Ninguna hoy</div>';
+    $('seg').innerHTML = seg.map(tarjeta).join('') || '<div class="vacio">Ninguno</div>';
+    $('avisos').innerHTML = tabla(avi.map(x => fila(x, x.avisos.map(a => a.txt.replace('.', ',')).join('<br>'))), 'Aviso');
+    $('desc').innerHTML = tabla(desc.map(x => fila(x, x.motivos.filter(m => MALOS.some(k => m.startsWith(k))).join('<br>'))), 'Señal');
+    $('mercados').innerHTML = ['Todos', 'España', 'USA'].map(m => `<button data-m="${m}" class="${m === mercado ? 'on' : ''}">${m}</button>`).join(' ');
+  }
+  $('mercados').addEventListener('click', e => { const m = e.target.dataset.m; if (m) { mercado = m; pintar(); } });
+
+  fetch('data/scan.json', { cache: 'no-cache' }).then(r => r.json()).then(j => {
+    datos = j.valores;
+    $('fecha').textContent = `${datos.length} valores · calculado el ${new Date(j.generado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
+    pintar();
+  }).catch(() => { $('cand').innerHTML = '<div class="vacio">Todavía no hay resultados del scan.</div>'; });
+})();
+</script>
+</body>
+</html>

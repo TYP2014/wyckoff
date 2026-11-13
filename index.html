@@ -96,6 +96,7 @@
     <div id="nombre"></div>
     <div id="precio"></div>
     <div id="actualizado"></div>
+    <a href="scan.html" style="font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:4px 10px">Buscador y avisos →</a>
   </header>
 
   <div class="tendencias" id="tendencias"></div>
@@ -126,6 +127,7 @@
     </div>
     <div class="grupo">
       <span class="et">Soportes / resistencias</span>
+      <button id="wy" title="Marca en el diario los eventos Wyckoff y el rango que detecta el buscador">Wyckoff</button>
       <button id="srAuto" title="Niveles donde el precio se ha parado varias veces (máximos y mínimos repetidos)">Automáticos</button>
     </div>
     <div class="grupo">
@@ -150,6 +152,10 @@
       <section>
         <h2>Fibonacci <span id="fibTipo"></span></h2>
         <div id="fibTabla" class="vacio">Sin tramo</div>
+      </section>
+      <section>
+        <h2>Wyckoff · diario</h2>
+        <div id="wyPanel" class="vacio">Sin datos del buscador</div>
       </section>
       <section>
         <h2>Mis dibujos</h2>
@@ -192,7 +198,7 @@
     fibModo: store.get('fibModo', 'auto'),   // auto | manual | off
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // modo de clic: 'fibA' | 'fibB' | 'nivel'
-    lineasFib: [], lineasAuto: [], sel: -1, previa: null, iman: store.get('iman', false), autos: [], srAuto: store.get('srAuto', true),
+    lineasFib: [], lineasAuto: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
     lista: [], color: store.get('color', '#4c8dff'), carga: 0,
   };
   const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
@@ -293,6 +299,7 @@
     $('verZig').classList.toggle('on', st.zig);
     pintarFib(piv);
     pintarAutos();
+    pintarWy();
     pintarDibujos();
     pintarTendencias();
   }
@@ -316,7 +323,7 @@
     const tr = tramoActual(piv);
     $('fibAuto').classList.toggle('on', st.fibModo === 'auto');
     $('fibManual').classList.toggle('on', st.fibModo === 'manual' && !st.modo);
-    if (!tr) { marcas.setMarkers([]); $('fibTabla').className = 'vacio'; $('fibTabla').textContent = 'Sin tramo'; $('fibTipo').textContent = ''; return; }
+    if (!tr) { st.marcasFib = []; ponerMarcas(); $('fibTabla').className = 'vacio'; $('fibTabla').textContent = 'Sin tramo'; $('fibTipo').textContent = ''; return; }
     const sube = tr.b.p > tr.a.p, filas = [];
     FIB.forEach(r => {
       const precio = tr.b.p - r * (tr.b.p - tr.a.p), zona = r >= 0.382 && r <= 0.618;
@@ -327,12 +334,33 @@
       filas.push(`<tr class="${zona ? 'zona' : ''}"><td>${nf(r * 100, 1)} %</td><td>${nf(precio)}</td></tr>`);
     });
     const orden = [tr.a, tr.b].sort((x, y) => (x.t > y.t ? 1 : -1));
-    marcas.setMarkers(orden.map(p => ({
+    st.marcasFib = (orden.map(p => ({
       time: p.t, position: (p === tr.a) === sube ? 'belowBar' : 'aboveBar', color: C.amber,
       shape: (p === tr.a) === sube ? 'arrowUp' : 'arrowDown', text: p === tr.a ? 'A' : 'B',
     })));
+    ponerMarcas();
     $('fibTipo').textContent = (tr.manual ? '· manual' : '· auto') + (sube ? ' · tramo alcista' : ' · tramo bajista');
     $('fibTabla').className = ''; $('fibTabla').innerHTML = `<table>${filas.join('')}</table>`;
+  }
+
+  // ---------- eventos Wyckoff del buscador (solo en diario)
+  const wyDe = () => (st.wy && st.tf === '1d' && st.scan[st.sym]) || null;
+  function ponerMarcas() {
+    const w = wyDe(), b = barras(), fechas = w ? new Set(b.map(x => x.time)) : null;
+    const ev = w ? w.eventos.filter(e => fechas.has(e.fecha)).map(e => {
+      const malo = ['UT', 'SOW', 'LPSY'].includes(e.tipo), abajo = ['SC', 'ST', 'Spring', 'Test', 'LPS'].includes(e.tipo);
+      return { time: e.fecha, position: abajo ? 'belowBar' : 'aboveBar', color: malo ? '#e0443e' : '#3b6fe0', shape: 'circle', text: e.tipo };
+    }) : [];
+    marcas.setMarkers(st.marcasFib.concat(ev).sort((x, y) => ep(x.time) - ep(y.time)));
+  }
+  function pintarWy() {
+    $('wy').classList.toggle('on', st.wy);
+    const w = st.scan[st.sym];
+    if (!w) { $('wyPanel').className = 'vacio'; $('wyPanel').textContent = 'Sin datos del buscador'; return; }
+    $('wyPanel').className = '';
+    $('wyPanel').innerHTML = `<div style="font-weight:600">${w.candidata ? '<span class="up">Candidata</span> · ' : w.descartada ? '<span class="down">Descartada</span> · ' : ''}${w.fase}</div>
+      <div class="nota">${w.puntos} puntos</div>
+      <ul style="margin:6px 0 0;padding-left:16px">${w.motivos.map(m => `<li>${m}</li>`).join('')}${w.avisos.map(a => `<li style="color:var(--accent);font-weight:600">${a.txt.replace('.', ',')}</li>`).join('')}</ul>`;
   }
 
   // ---------- soportes y resistencias automáticos
@@ -453,6 +481,16 @@
     updateAllViews() {},
     paneViews() {
       return [{ zOrder: () => 'top', renderer: () => ({ draw: t => t.useMediaCoordinateSpace(s => {
+        const w = wyDe();
+        if (w && w.rango) {                                  // rango detectado por el buscador
+          const ctx = s.context, x1 = chart.timeScale().logicalToCoordinate(Math.max(0, indiceDe(ep(w.rango.ini), '1d')));
+          const x2 = chart.timeScale().logicalToCoordinate(barras().length - 1), y1 = velas.priceToCoordinate(w.rango.sup), y2 = velas.priceToCoordinate(w.rango.inf);
+          if (x1 != null && x2 != null && y1 != null && y2 != null) {
+            ctx.save(); ctx.strokeStyle = '#5f6b7a'; ctx.fillStyle = '#5f6b7a'; ctx.setLineDash([6, 4]); ctx.lineWidth = 1;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1); ctx.globalAlpha = 0.04; ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.globalAlpha = 1; ctx.font = '11px sans-serif'; ctx.fillText('Rango', x1 + 4, y1 - 4); ctx.restore();
+          }
+        }
         dibs.forEach((d, k) => trazar(s.context, d, s.mediaSize.width, k === st.sel));
         if (st.previa) trazar(s.context, st.previa, s.mediaSize.width, false);
       }) }) }];
@@ -653,6 +691,7 @@
   FORMAS.forEach(t => { $('t_' + t).onclick = () => setModo(st.modo === t ? null : t); });
   $('sens').value = String(st.sens);
   $('sens').onchange = e => { st.sens = +e.target.value; store.set('sens', st.sens); pintarAnalisis(); };
+  $('wy').onclick = () => { st.wy = !st.wy; store.set('wy', st.wy); pintarAnalisis(); };
   $('srAuto').onclick = () => { st.srAuto = !st.srAuto; store.set('srAuto', st.srAuto); pintarAutos(); };
   $('verZig').onclick = () => { st.zig = !st.zig; store.set('zig', st.zig); pintarAnalisis(); };
 
@@ -724,6 +763,7 @@
   async function iniciar() {
     try { st.lista = await json('config/tickers.json'); } catch (e) { return fallo('No se pudo leer config/tickers.json'); }
     const pedido = new URLSearchParams(location.search).get('s') || store.get('sym', null);
+    try { (await json('data/scan.json')).valores.forEach(x => { st.scan[x.symbol] = x; }); } catch (e) {}
     window.__wyk = { st, zigzag, tendencia, chart };   // para pruebas
     await cargar(pedido);
   }
