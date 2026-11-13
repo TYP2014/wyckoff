@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buscador Wyckoff – Graficador</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #0e1217; --panel: #161c24; --line: #263040; --txt: #d7dde6; --dim: #8492a6;
+    --up: #2bb39a; --down: #ef5350; --amber: #e0a526; --accent: #4c8dff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--txt);
+    font: 14px/1.4 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .app { display: flex; flex-direction: column; height: 100%; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 10px 14px 6px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header h1 small { color: var(--dim); font-weight: 400; font-size: 13px; margin-left: 6px; }
+  #precio { font-size: 17px; font-variant-numeric: tabular-nums; }
+  #precio .var { font-size: 13px; margin-left: 6px; }
+  #actualizado { color: var(--dim); font-size: 12px; margin-left: auto; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--amber); }
+
+  .barra { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 6px 14px;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); }
+  .grupo { display: flex; align-items: center; gap: 4px; }
+  .grupo > span.et { color: var(--dim); font-size: 12px; margin-right: 2px; }
+  button, select { font: inherit; color: var(--txt); background: #1e2632; border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: #3a4a61; }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.armado { background: var(--amber); border-color: var(--amber); color: #111; }
+
+  .tendencias { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .chip b { margin-right: 5px; color: var(--dim); font-weight: 600; }
+
+  .cuerpo { flex: 1; display: flex; min-height: 0; }
+  #grafWrap { position: relative; flex: 1; min-width: 0; min-height: 380px; }
+  #graf { position: absolute; inset: 0; }
+  #leyenda { position: absolute; left: 10px; top: 6px; z-index: 5; font-size: 12px; pointer-events: none;
+    font-variant-numeric: tabular-nums; color: var(--dim); }
+  #leyenda b { color: var(--txt); font-weight: 500; margin-right: 8px; }
+  #aviso { pointer-events: none; position: absolute; left: 50%; top: 40px; transform: translateX(-50%); z-index: 6; display: none;
+    background: var(--amber); color: #111; padding: 5px 12px; border-radius: 6px; font-size: 13px; }
+  #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    color: var(--down); padding: 20px; text-align: center; z-index: 7; background: var(--bg); }
+
+  aside { width: 230px; border-left: 1px solid var(--line); padding: 10px 12px; overflow: auto; font-size: 13px; }
+  aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 6px; }
+  aside section { margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td { padding: 2px 0; } td:last-child { text-align: right; }
+  tr.zona td { color: var(--amber); font-weight: 600; }
+  .nivel { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .nivel .x { margin-left: auto; padding: 0 7px; line-height: 20px; }
+  .vacio, .nota { color: var(--dim); font-size: 12px; }
+  footer { color: var(--dim); font-size: 11px; padding: 4px 14px 6px; border-top: 1px solid var(--line); }
+
+  @media (max-width: 760px) {
+    .cuerpo { flex-direction: column; }
+    #grafWrap { min-height: 58vh; flex: none; }
+    aside { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+    .app { height: auto; min-height: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span id="simbolo">—</span><small id="nombre"></small></h1>
+    <div id="precio"></div>
+    <div id="actualizado"></div>
+  </header>
+
+  <div class="tendencias" id="tendencias"></div>
+
+  <div class="barra">
+    <div class="grupo" id="tfs">
+      <button data-tf="60m">60m</button>
+      <button data-tf="1d">D</button>
+      <button data-tf="1wk">S</button>
+      <button data-tf="1mo">M</button>
+    </div>
+    <div class="grupo">
+      <span class="et">Fibonacci</span>
+      <button id="fibAuto" title="Último tramo relevante del zigzag">Auto</button>
+      <button id="fibManual" title="Marca dos puntos en el gráfico: inicio y fin del tramo">Manual</button>
+      <button id="fibOff">Quitar</button>
+    </div>
+    <div class="grupo">
+      <span class="et">Niveles</span>
+      <button id="addNivel" title="Pulsa y luego haz clic en el gráfico al precio deseado">+ Soporte / Resistencia</button>
+    </div>
+    <div class="grupo">
+      <span class="et">Tramos</span>
+      <select id="sens" title="Tamaño mínimo de un giro, en múltiplos del ATR(14)">
+        <option value="3">Finos</option>
+        <option value="5" selected>Medios</option>
+        <option value="8">Amplios</option>
+      </select>
+      <button id="verZig" title="Dibuja los giros que usa el cálculo de tendencia">Zigzag</button>
+    </div>
+  </div>
+
+  <div class="cuerpo">
+    <div id="grafWrap">
+      <div id="graf"></div>
+      <div id="leyenda"></div>
+      <div id="aviso"></div>
+      <div id="error"></div>
+    </div>
+    <aside>
+      <section>
+        <h2>Fibonacci <span id="fibTipo"></span></h2>
+        <div id="fibTabla" class="vacio">Sin tramo</div>
+      </section>
+      <section>
+        <h2>Soportes y resistencias</h2>
+        <div id="niveles"></div>
+        <p class="nota">Se guardan en este navegador.</p>
+      </section>
+    </aside>
+  </div>
+  <footer>Herramienta personal de apoyo a la decisión. No ejecuta órdenes ni es asesoramiento financiero.</footer>
+</div>
+
+<script src="lib/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  'use strict';
+  const LC = LightweightCharts;
+  const TFS = ['1mo', '1wk', '1d', '60m'];
+  const TF_NOMBRE = { '1mo': 'Mensual', '1wk': 'Semanal', '1d': 'Diario', '60m': '60 min' };
+  const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  const C = { up: '#2bb39a', down: '#ef5350', amber: '#e0a526', dim: '#8492a6' };
+  const $ = id => document.getElementById(id);
+  const nf = (x, d = 2) => x.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const nvol = v => v >= 1e9 ? nf(v / 1e9) + ' MM' : v >= 1e6 ? nf(v / 1e6) + ' M' : v >= 1e3 ? nf(v / 1e3, 0) + ' k' : String(v);
+
+  // ---------- almacenamiento local (niveles, fibo manual, preferencias)
+  const store = {
+    get(k, def) { try { const v = localStorage.getItem('wyk:' + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } },
+    set(k, v) { try { localStorage.setItem('wyk:' + k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { try { localStorage.removeItem('wyk:' + k); } catch (e) {} },
+  };
+
+  const st = {
+    sym: null, info: null, tf: store.get('tf', '1d'),
+    datos: {},                       // tf -> barras [{time,open,high,low,close,volume}]
+    fibModo: store.get('fibModo', 'auto'),   // auto | manual | off
+    sens: store.get('sens', 5), zig: store.get('zig', false),
+    modo: null, puntoA: null,        // modo de clic: 'fibA' | 'fibB' | 'nivel'
+    lineasFib: [], lineasNivel: [],
+  };
+
+  // ---------- cálculo: ATR, zigzag, tendencia
+  function atr(b, n = 14) {
+    const out = new Array(b.length).fill(null); let prev = null, suma = 0;
+    for (let i = 0; i < b.length; i++) {
+      const tr = i === 0 ? b[i].high - b[i].low
+        : Math.max(b[i].high - b[i].low, Math.abs(b[i].high - b[i - 1].close), Math.abs(b[i].low - b[i - 1].close));
+      if (i < n) { suma += tr; prev = suma / (i + 1); } else { prev = (prev * (n - 1) + tr) / n; }
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  // Giros: un giro se confirma cuando el precio retrocede más de `mult` × ATR desde el extremo.
+  // El último punto es provisional (extremo en curso).
+  function zigzag(b, mult) {
+    if (b.length < 3) return [];
+    const a = atr(b), piv = [];
+    let dir = 0, ext = 0, iMax = 0, iMin = 0;
+    for (let i = 1; i < b.length; i++) {
+      const th = mult * a[i];
+      if (dir === 0) {
+        if (b[i].high > b[iMax].high) iMax = i;
+        if (b[i].low < b[iMin].low) iMin = i;
+        if (b[i].high - b[iMin].low >= th && iMin < i) { piv.push({ i: iMin, p: b[iMin].low, t: 'L' }); dir = 1; ext = i; }
+        else if (b[iMax].high - b[i].low >= th && iMax < i) { piv.push({ i: iMax, p: b[iMax].high, t: 'H' }); dir = -1; ext = i; }
+      } else if (dir === 1) {
+        if (b[i].high >= b[ext].high) ext = i;
+        else if (b[ext].high - b[i].low >= th) { piv.push({ i: ext, p: b[ext].high, t: 'H' }); dir = -1; ext = i; }
+      } else {
+        if (b[i].low <= b[ext].low) ext = i;
+        else if (b[i].high - b[ext].low >= th) { piv.push({ i: ext, p: b[ext].low, t: 'L' }); dir = 1; ext = i; }
+      }
+    }
+    if (dir !== 0) piv.push({ i: ext, p: dir === 1 ? b[ext].high : b[ext].low, t: dir === 1 ? 'H' : 'L', prov: true });
+    return piv;
+  }
+
+  // Tendencia por estructura: máximos y mínimos crecientes = alcista; decrecientes = bajista; mixto = rango.
+  function tendencia(piv) {
+    const H = piv.filter(p => p.t === 'H'), L = piv.filter(p => p.t === 'L');
+    if (H.length < 2 || L.length < 2) return null;
+    const hh = H[H.length - 1].p > H[H.length - 2].p, hl = L[L.length - 1].p > L[L.length - 2].p;
+    return hh && hl ? 'alcista' : (!hh && !hl ? 'bajista' : 'rango');
+  }
+
+  // ---------- gráfico
+  const chart = LC.createChart($('graf'), {
+    autoSize: true,
+    layout: { background: { color: '#0e1217' }, textColor: '#aab4c3', panes: { separatorColor: '#263040' } },
+    grid: { vertLines: { color: '#1a212b' }, horzLines: { color: '#1a212b' } },
+    crosshair: { mode: LC.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#263040' },
+    timeScale: { borderColor: '#263040', rightOffset: 6 },
+    localization: { locale: 'es-ES' },
+  });
+  const velas = chart.addSeries(LC.CandlestickSeries, {
+    priceFormat: { type: 'custom', formatter: p => nf(p), minMove: 0.01 },
+    upColor: C.up, downColor: C.down, borderUpColor: C.up, borderDownColor: C.down, wickUpColor: C.up, wickDownColor: C.down,
+  });
+  const zig = chart.addSeries(LC.LineSeries, {
+    color: '#7f9cff', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false,
+  });
+  const vol = chart.addSeries(LC.HistogramSeries, { priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false }, 1);
+  const volMedia = chart.addSeries(LC.LineSeries, {
+    color: '#c9d1dc', lineWidth: 1, priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+  }, 1);
+  const marcas = LC.createSeriesMarkers(velas, []);
+  const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(4); p[1].setStretchFactor(1); } };
+
+  const barras = () => st.datos[st.tf] || [];
+
+  function pintar(resetVista) {
+    const b = barras();
+    velas.setData(b.map(x => ({ time: x.time, open: x.open, high: x.high, low: x.low, close: x.close })));
+    vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: x.close >= x.open ? 'rgba(43,179,154,.55)' : 'rgba(239,83,80,.55)' })));
+    const vm = []; let s = 0;
+    for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
+    volMedia.setData(vm);
+    chart.applyOptions({ timeScale: { timeVisible: st.tf === '60m', secondsVisible: false } });
+    ajustarPaneles();
+    if (resetVista) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, b.length - 220), to: b.length + 6 });
+    pintarAnalisis();
+    leyenda(b[b.length - 1], b[b.length - 2]);
+    document.querySelectorAll('#tfs button').forEach(x => x.classList.toggle('on', x.dataset.tf === st.tf));
+  }
+
+  function pintarAnalisis() {
+    const b = barras(), piv = zigzag(b, st.sens);
+    zig.setData(piv.map(p => ({ time: b[p.i].time, value: p.p })));
+    zig.applyOptions({ visible: st.zig });
+    $('verZig').classList.toggle('on', st.zig);
+    pintarFib(piv);
+    pintarNiveles();
+    pintarTendencias();
+  }
+
+  // ---------- Fibonacci
+  const claveFib = () => `fib:${st.sym}:${st.tf}`;
+
+  function tramoActual(piv) {
+    const b = barras();
+    if (st.fibModo === 'manual') {
+      const m = store.get(claveFib(), null);
+      if (m) return { a: m.a, b: m.b, manual: true };
+    }
+    if (st.fibModo === 'off' || piv.length < 2) return null;
+    const A = piv[piv.length - 2], B = piv[piv.length - 1];
+    return { a: { t: b[A.i].time, p: A.p }, b: { t: b[B.i].time, p: B.p }, manual: false };
+  }
+
+  function pintarFib(piv) {
+    st.lineasFib.forEach(l => velas.removePriceLine(l)); st.lineasFib = [];
+    const tr = tramoActual(piv);
+    $('fibAuto').classList.toggle('on', st.fibModo === 'auto');
+    $('fibManual').classList.toggle('on', st.fibModo === 'manual' && !st.modo);
+    if (!tr) { marcas.setMarkers([]); $('fibTabla').className = 'vacio'; $('fibTabla').textContent = 'Sin tramo'; $('fibTipo').textContent = ''; return; }
+    const sube = tr.b.p > tr.a.p, filas = [];
+    FIB.forEach(r => {
+      const precio = tr.b.p - r * (tr.b.p - tr.a.p), zona = r >= 0.382 && r <= 0.618;
+      st.lineasFib.push(velas.createPriceLine({
+        price: precio, color: zona ? C.amber : 'rgba(224,165,38,.45)', lineWidth: 1,
+        lineStyle: zona ? LC.LineStyle.Solid : LC.LineStyle.Dotted, axisLabelVisible: zona, title: nf(r * 100, 1) + ' %',
+      }));
+      filas.push(`<tr class="${zona ? 'zona' : ''}"><td>${nf(r * 100, 1)} %</td><td>${nf(precio)}</td></tr>`);
+    });
+    const orden = [tr.a, tr.b].sort((x, y) => (x.t > y.t ? 1 : -1));
+    marcas.setMarkers(orden.map(p => ({
+      time: p.t, position: (p === tr.a) === sube ? 'belowBar' : 'aboveBar', color: C.amber,
+      shape: (p === tr.a) === sube ? 'arrowUp' : 'arrowDown', text: p === tr.a ? 'A' : 'B',
+    })));
+    $('fibTipo').textContent = (tr.manual ? '· manual' : '· auto') + (sube ? ' · tramo alcista' : ' · tramo bajista');
+    $('fibTabla').className = ''; $('fibTabla').innerHTML = `<table>${filas.join('')}</table>`;
+  }
+
+  // ---------- soportes y resistencias (por valor, comunes a todas las temporalidades)
+  const claveNiv = () => `niveles:${st.sym}`;
+  const niveles = () => store.get(claveNiv(), []);
+
+  function pintarNiveles() {
+    st.lineasNivel.forEach(l => velas.removePriceLine(l)); st.lineasNivel = [];
+    const d = st.datos['1d'] || barras(), ultimo = d.length ? d[d.length - 1].close : 0;
+    const lista = niveles().slice().sort((x, y) => y - x);
+    lista.forEach(p => {
+      const sop = p <= ultimo;
+      st.lineasNivel.push(velas.createPriceLine({
+        price: p, color: sop ? C.up : C.down, lineWidth: 2, lineStyle: LC.LineStyle.Dashed, axisLabelVisible: true, title: sop ? 'S' : 'R',
+      }));
+    });
+    $('niveles').innerHTML = lista.length ? lista.map(p =>
+      `<div class="nivel"><span class="${p <= ultimo ? 'up' : 'down'}">${p <= ultimo ? 'Soporte' : 'Resistencia'}</span>
+       <span>${nf(p)}</span><button class="x" data-p="${p}" title="Borrar">×</button></div>`).join('')
+      : '<div class="vacio">Ninguno guardado</div>';
+  }
+
+  $('niveles').addEventListener('click', e => {
+    const p = e.target.dataset && e.target.dataset.p; if (!p) return;
+    store.set(claveNiv(), niveles().filter(x => String(x) !== p)); pintarNiveles();
+  });
+
+  // ---------- tendencia por temporalidad
+  function pintarTendencias() {
+    $('tendencias').innerHTML = TFS.map(tf => {
+      const b = st.datos[tf]; const t = b && b.length ? tendencia(zigzag(b, st.sens)) : null;
+      const cls = t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : t === 'rango' ? 'flat' : '';
+      const txt = t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Sin datos suficientes';
+      return `<span class="chip"><b>${TF_NOMBRE[tf]}</b><span class="${cls}">${txt}</span></span>`;
+    }).join('');
+  }
+
+  // ---------- leyenda OHLC
+  function leyenda(x, ant) {
+    if (!x) { $('leyenda').textContent = ''; return; }
+    const v = ant ? (x.close / ant.close - 1) * 100 : 0, cls = v >= 0 ? 'up' : 'down';
+    $('leyenda').innerHTML = `A <b>${nf(x.open)}</b>Máx <b>${nf(x.high)}</b>Mín <b>${nf(x.low)}</b>C <b>${nf(x.close)}</b>` +
+      `<b class="${cls}">${v >= 0 ? '+' : ''}${nf(v)} %</b>Vol <b>${nvol(x.volume)}</b>`;
+  }
+  chart.subscribeCrosshairMove(p => {
+    const b = barras(); let i = p && p.logical != null ? Math.round(p.logical) : b.length - 1;
+    if (i < 0 || i >= b.length) i = b.length - 1;
+    leyenda(b[i], b[i - 1]);
+  });
+
+  // ---------- clics en el gráfico (fibo manual y niveles)
+  function aviso(txt) { $('aviso').style.display = txt ? 'block' : 'none'; $('aviso').textContent = txt || ''; }
+  function setModo(m) {
+    st.modo = m; st.puntoA = null;
+    $('fibManual').classList.toggle('armado', m === 'fibA' || m === 'fibB');
+    $('addNivel').classList.toggle('armado', m === 'nivel');
+    aviso(m === 'fibA' ? 'Fibonacci: haz clic en el INICIO del tramo' : m === 'fibB' ? 'Ahora haz clic en el FINAL del tramo'
+      : m === 'nivel' ? 'Haz clic en el precio del soporte o resistencia' : '');
+  }
+  const alClic = (x, y) => {
+    if (!st.modo || y > chart.panes()[0].getHeight()) return;
+    const precio = velas.coordinateToPrice(y), logico = chart.timeScale().coordinateToLogical(x);
+    if (precio == null) return;
+    if (st.modo === 'nivel') {
+      const lista = niveles(); lista.push(Math.round(precio * 100) / 100);
+      store.set(claveNiv(), lista); setModo(null); pintarNiveles(); return;
+    }
+    const b = barras(), i = logico != null ? Math.round(logico) : -1;
+    if (i < 0 || i >= b.length) return;
+    // se ajusta al máximo o mínimo de la vela, el que quede más cerca del clic
+    const pt = { t: b[i].time, p: Math.abs(precio - b[i].high) < Math.abs(precio - b[i].low) ? b[i].high : b[i].low };
+    if (st.modo === 'fibA') { st.puntoA = pt; st.modo = 'fibB'; aviso('Ahora haz clic en el FINAL del tramo'); return; }
+    if (pt.t === st.puntoA.t) return;
+    store.set(claveFib(), { a: st.puntoA, b: pt });
+    st.fibModo = 'manual'; store.set('fibModo', 'manual'); setModo(null); pintarAnalisis();
+  };
+  // Clic propio (no el de la librería, que descarta clics muy seguidos); se ignora si hubo arrastre.
+  let pulsado = null;
+  $('graf').addEventListener('pointerdown', e => { pulsado = { x: e.clientX, y: e.clientY }; });
+  $('graf').addEventListener('pointerup', e => {
+    if (!pulsado) return;
+    const mov = Math.abs(e.clientX - pulsado.x) + Math.abs(e.clientY - pulsado.y); pulsado = null;
+    if (mov > 6) return;
+    const r = $('graf').getBoundingClientRect(); alClic(e.clientX - r.left, e.clientY - r.top);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && st.modo) { setModo(null); pintarAnalisis(); } });
+
+  // ---------- botones
+  $('tfs').addEventListener('click', e => {
+    const tf = e.target.dataset.tf; if (!tf || !st.datos[tf]) return;
+    st.tf = tf; store.set('tf', tf); setModo(null); pintar(true);
+  });
+  $('fibAuto').onclick = () => { st.fibModo = 'auto'; store.set('fibModo', 'auto'); setModo(null); pintarAnalisis(); };
+  $('fibOff').onclick = () => { st.fibModo = 'off'; store.set('fibModo', 'off'); store.del(claveFib()); setModo(null); pintarAnalisis(); };
+  $('fibManual').onclick = () => setModo(st.modo === 'fibA' || st.modo === 'fibB' ? null : 'fibA');
+  $('addNivel').onclick = () => setModo(st.modo === 'nivel' ? null : 'nivel');
+  $('sens').value = String(st.sens);
+  $('sens').onchange = e => { st.sens = +e.target.value; store.set('sens', st.sens); pintarAnalisis(); };
+  $('verZig').onclick = () => { st.zig = !st.zig; store.set('zig', st.zig); pintarAnalisis(); };
+
+  // ---------- carga
+  function fallo(txt) { $('error').style.display = 'flex'; $('error').textContent = txt; }
+  async function json(url) { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) throw new Error(url + ' → ' + r.status); return r.json(); }
+
+  async function iniciar() {
+    let lista;
+    try { lista = await json('config/tickers.json'); } catch (e) { return fallo('No se pudo leer config/tickers.json'); }
+    const pedido = new URLSearchParams(location.search).get('s');
+    st.info = lista.find(x => x.symbol === pedido) || lista[0]; st.sym = st.info.symbol;
+    $('simbolo').textContent = st.sym; $('nombre').textContent = `${st.info.nombre || ''} · ${st.info.mercado || ''}`;
+    document.title = `${st.sym} – Buscador Wyckoff`;
+
+    const res = await Promise.allSettled(TFS.map(tf => json(`data/${st.sym}/${tf}.json`)));
+    let actualizado = null;
+    res.forEach((r, k) => {
+      if (r.status !== 'fulfilled') return;
+      st.datos[TFS[k]] = r.value.barras.map(x => ({ time: x[0], open: x[1], high: x[2], low: x[3], close: x[4], volume: x[5] }));
+      actualizado = r.value.actualizado || actualizado;
+    });
+    if (!Object.keys(st.datos).length) return fallo(`Todavía no hay datos de ${st.sym}. Lanza la acción «Actualizar datos» en GitHub.`);
+    if (!st.datos[st.tf]) st.tf = st.datos['1d'] ? '1d' : Object.keys(st.datos)[0];
+
+    const d = st.datos['1d'] || barras(), u = d[d.length - 1], a = d[d.length - 2];
+    const v = a ? (u.close / a.close - 1) * 100 : 0;
+    $('precio').innerHTML = `${nf(u.close)} ${st.info.divisa || ''}<span class="var ${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${nf(v)} %</span>`;
+    if (actualizado) $('actualizado').textContent = `Último dato: ${String(u.time).split('-').reverse().join('/')} · actualizado ${new Date(actualizado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
+    pintar(true);
+    window.__wyk = { st, zigzag, tendencia, chart };   // para pruebas
+  }
+  iniciar();
+})();
+</script>
+</body>
+</html>
