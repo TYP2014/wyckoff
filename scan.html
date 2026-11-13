@@ -83,7 +83,7 @@
   const cls = t => t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : t === 'rango' ? 'flat' : '';
   const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
   const MALOS = ['Upthrust', 'Señal de debilidad', 'Último punto de oferta'];
-  let datos = [], mercado = 'Todos';
+  let datos = [], mercado = localStorage.getItem('wyk:scanGrupo') || 'Todos';
 
   const chips = x => `<div class="chips">
     <span class="chip"><b>M</b><span class="${cls(x.tendM)}">${cap(x.tendM)}</span></span>
@@ -91,7 +91,7 @@
     <span class="chip"><b>D</b><span class="${cls(x.tendD)}">${cap(x.tendD)}</span></span>
     <span class="chip fase">${x.fase}</span><span class="chip pts">${x.puntos} puntos</span></div>`;
   const tarjeta = x => `<div class="tarjeta ${x.candidata ? 'cand' : ''}">
-    <div class="cab"><b>${x.symbol}</b><span class="nom">${x.nombre} · ${x.mercado}</span>
+    <div class="cab"><b>${x.symbol}</b><span class="nom">${x.nombre} · ${(x.indices || [x.mercado]).join(' · ')}</span>
       <span class="pre">${nf(x.cierre)} <span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></span></div>
     ${chips(x)}
     <ul>${x.motivos.map(m => `<li class="${MALOS.some(k => m.startsWith(k)) ? 'malo' : ''}">${m}</li>`).join('')}
@@ -105,7 +105,7 @@
   const tabla = (filas, col) => filas.length ? `<table><tr><th>Valor</th><th>Cierre</th><th>${col}</th><th>Mensual / semanal</th></tr>${filas.join('')}</table>` : '<div class="vacio">Ninguno hoy</div>';
 
   function pintar() {
-    const D = datos.filter(x => mercado === 'Todos' || x.mercado === mercado);
+    const D = datos.filter(x => mercado === 'Todos' || (x.indices || []).includes(mercado));
     const cand = D.filter(x => x.candidata), desc = D.filter(x => x.descartada);
     const seg = D.filter(x => !x.candidata && !x.descartada && x.puntos >= 5);
     const avi = D.filter(x => x.avisos.length);
@@ -115,12 +115,15 @@
     $('seg').innerHTML = seg.map(tarjeta).join('') || '<div class="vacio">Ninguno</div>';
     $('avisos').innerHTML = tabla(avi.map(x => fila(x, x.avisos.map(a => a.txt.replace('.', ',')).join('<br>'))), 'Aviso');
     $('desc').innerHTML = tabla(desc.map(x => fila(x, x.motivos.filter(m => MALOS.some(k => m.startsWith(k))).join('<br>'))), 'Señal');
-    $('mercados').innerHTML = ['Todos', 'España', 'USA'].map(m => `<button data-m="${m}" class="${m === mercado ? 'on' : ''}">${m}</button>`).join(' ');
+    $('mercados').innerHTML = ['IBEX 35', 'Mercado Continuo', 'Dow Jones', 'Nasdaq 100', 'S&P 500', 'Todos'].filter(m => m === 'Todos' || datos.some(x => (x.indices || []).includes(m))).map(m => `<button data-m="${m}" class="${m === mercado ? 'on' : ''}">${m}</button>`).join(' ');
   }
-  $('mercados').addEventListener('click', e => { const m = e.target.dataset.m; if (m) { mercado = m; pintar(); } });
+  $('mercados').addEventListener('click', e => { const m = e.target.dataset.m; if (m) { mercado = m; try { localStorage.setItem('wyk:scanGrupo', m); } catch (e) {} pintar(); } });
 
-  fetch('data/scan.json', { cache: 'no-cache' }).then(r => r.json()).then(j => {
-    datos = j.valores;
+  const leer = u => fetch(u, { cache: 'no-cache' }).then(r => r.json());
+  Promise.all([leer('data/scan.json'), leer('config/tickers.json').catch(() => [])]).then(([j, T]) => {
+    const ind = {}; T.forEach(x => { ind[x.symbol] = x.indices; });
+    datos = j.valores; datos.forEach(x => { x.indices = ind[x.symbol] || [x.mercado]; });
+    if (mercado !== 'Todos' && !datos.some(x => x.indices.includes(mercado))) mercado = 'Todos';
     $('fecha').textContent = `${datos.length} valores · calculado el ${new Date(j.generado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
     pintar();
   }).catch(() => { $('cand').innerHTML = '<div class="vacio">Todavía no hay resultados del scan.</div>'; });
