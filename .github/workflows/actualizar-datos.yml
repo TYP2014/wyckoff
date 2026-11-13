@@ -23,6 +23,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python scripts/update_data.py
+      - name: Buscador Wyckoff (scan)
+        if: always()
+        run: python scripts/scan.py
       - name: Guardar datos en el repositorio
         if: always()   # si algún valor falla, se guardan los demás
         run: |
