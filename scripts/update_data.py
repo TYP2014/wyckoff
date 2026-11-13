@@ -9,6 +9,7 @@ Uso:  python scripts/update_data.py            (todos los valores de config/tick
 """
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,10 +29,19 @@ def proveedor_yfinance(symbol: str, interval: str) -> pd.DataFrame:
     import yfinance as yf
 
     period = "730d" if interval == "60m" else "max"
-    df = yf.Ticker(symbol).history(
-        period=period, interval=interval, auto_adjust=False, actions=False
-    )
-    return df[["Open", "High", "Low", "Close", "Volume"]]
+    ultimo = None
+    for intento in range(3):  # Yahoo a veces corta: reintentos con espera
+        try:
+            df = yf.Ticker(symbol).history(
+                period=period, interval=interval, auto_adjust=False, actions=False
+            )
+            if len(df):
+                return df[["Open", "High", "Low", "Close", "Volume"]]
+            ultimo = RuntimeError("sin datos")
+        except Exception as e:
+            ultimo = e
+        time.sleep(3 * (intento + 1))
+    raise RuntimeError(f"{symbol} {interval}: {ultimo}")
 
 
 PROVEEDOR = proveedor_yfinance
@@ -129,6 +139,8 @@ def main() -> int:
         except Exception as e:  # un valor que falla no para al resto
             errores += 1
             print(f"ERROR {s}: {e}", file=sys.stderr)
+        time.sleep(0.5)
+    print(f"Terminado: {len(simbolos) - errores} correctos, {errores} con error")
     return 1 if errores else 0
 
 
