@@ -63,6 +63,11 @@
   #leyenda b { color: var(--txt); font-weight: 500; margin-right: 8px; }
   #aviso { pointer-events: none; position: absolute; left: 50%; top: 40px; transform: translateX(-50%); z-index: 6; display: none;
     background: var(--amber); color: #fff; padding: 5px 12px; border-radius: 6px; font-size: 13px; }
+  #info { position: absolute; z-index: 8; display: none; min-width: 190px; background: #fff; border: 1px solid #1c2330; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); padding: 6px 10px 8px; font-size: 12.5px; }
+  #info h3 { margin: 0 0 4px; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+  #info h3 button { margin-left: auto; padding: 0 6px; line-height: 18px; }
+  #info td { padding: 1px 0; } #info td:first-child { color: var(--dim); padding-right: 14px; }
   #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
     color: var(--down); padding: 20px; text-align: center; z-index: 7; background: var(--bg); }
 
@@ -147,6 +152,7 @@
       <div id="graf"></div>
       <div id="leyenda"></div>
       <div id="aviso"></div>
+      <div id="info"></div>
       <div id="error"></div>
     </div>
     <aside>
@@ -161,7 +167,7 @@
       <section>
         <h2>Mis dibujos</h2>
         <div id="dibujos"></div>
-        <p class="nota">Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo.</p>
+        <p class="nota">Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Se puede dibujar también en el volumen. Clic en una vela: recuadro con sus datos.</p>
       </section>
       <section>
         <h2>Soportes y resistencias automáticos </h2>
@@ -201,7 +207,7 @@
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // modo de clic: 'fibA' | 'fibB' | 'nivel'
     lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
-    lista: [], color: store.get('color', '#4c8dff'), carga: 0,
+    lista: [], color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
   };
   const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
   const RANGO = { '60m': 0, '1d': 1, '1wk': 2, '1mo': 3 };
@@ -270,24 +276,24 @@
   const zig = chart.addSeries(LC.LineSeries, {
     color: '#3b6fe0', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: false,
   });
-  const vol = chart.addSeries(LC.HistogramSeries, { priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false }, 1);
+  const vol = chart.addSeries(LC.HistogramSeries, { color: '#000000', priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false }, 1);
   const volMedia = chart.addSeries(LC.LineSeries, {
-    color: '#5f6b7a', lineWidth: 1, priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+    color: '#c98500', lineWidth: 2, priceFormat: { type: 'custom', formatter: v => nvol(Math.round(v)), minMove: 1 }, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
   }, 1);
   const marcas = LC.createSeriesMarkers(velas, []);
-  const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(4); p[1].setStretchFactor(1); } };
+  const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(3); p[1].setStretchFactor(1); } };
 
   const barras = () => st.datos[st.tf] || [];
 
   function pintar(resetVista) {
     const b = barras();
     velas.setData(b.map(x => ({ time: x.time, open: x.open, high: x.high, low: x.low, close: x.close })));
-    vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: x.close >= x.open ? 'rgba(18,150,126,.5)' : 'rgba(224,68,62,.5)' })));
+    vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: '#000000' })));
     const vm = []; let s = 0;
     for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
     volMedia.setData(vm);
     chart.applyOptions({ timeScale: { timeVisible: st.tf === '60m', secondsVisible: false } });
-    ajustarPaneles();
+    ajustarPaneles(); cerrarInfo();
     if (resetVista) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, b.length - 220), to: b.length + 6 });
     pintarAnalisis();
     leyenda(b[b.length - 1], b[b.length - 2]);
@@ -462,9 +468,10 @@
     return k <= n - 1 ? { t: ep(b[k].time), p: pr } : { t: ep(b[n - 1].time), d: k - (n - 1), p: pr };
   }
   function geo(d) {                              // coordenadas en pantalla
-    if (d.tipo === 'horiz') { const y = velas.priceToCoordinate(d.p); return y == null ? null : { y }; }
+    const se = d.pn ? vol : velas;
+    if (d.tipo === 'horiz') { const y = se.priceToCoordinate(d.p); return y == null ? null : { y }; }
     const ts = chart.timeScale(), xa = ts.logicalToCoordinate(aIdx(d.a, d.tf)), xb = ts.logicalToCoordinate(aIdx(d.b, d.tf));
-    const ya = velas.priceToCoordinate(d.a.p), yb = velas.priceToCoordinate(d.b.p);
+    const ya = se.priceToCoordinate(d.a.p), yb = se.priceToCoordinate(d.b.p);
     return [xa, xb, ya, yb].some(v => v == null) ? null : { xa, ya, xb, yb };
   }
   function finLinea(d, g, w) {                   // extremos del trazo, con la prolongación si la tiene
@@ -478,7 +485,7 @@
     ctx.save(); ctx.strokeStyle = d.c; ctx.fillStyle = d.c; ctx.lineWidth = sel ? 3 : 2;
     if (d.tipo === 'horiz') {
       ctx.beginPath(); ctx.moveTo(0, g.y); ctx.lineTo(w, g.y); ctx.stroke();
-      ctx.font = '600 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(nf(d.p), w - 6, g.y - 4);
+      ctx.font = '600 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(d.pn ? nvol(Math.round(d.p)) : nf(d.p), w - 6, g.y - 4);
     } else if (d.tipo === 'linea') {
       const [x1, y1, x2, y2] = finLinea(d, g, w);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
@@ -511,24 +518,45 @@
             ctx.globalAlpha = 1; ctx.font = '11px sans-serif'; ctx.fillText('Rango', x1 + 4, y1 - 4); ctx.restore();
           }
         }
-        dibs.forEach((d, k) => trazar(s.context, d, s.mediaSize.width, k === st.sel));
-        if (st.previa) trazar(s.context, st.previa, s.mediaSize.width, false);
+        velaMarcada(s);
+        dibs.forEach((d, k) => { if (!d.pn) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
+        if (st.previa && !st.previa.pn) trazar(s.context, st.previa, s.mediaSize.width, false);
       }) }) }];
     },
   };
   velas.attachPrimitive(capa);
-  const repintar = () => capa.pedir && capa.pedir();
+  function velaMarcada(s) {                      // columna tenue sobre la vela del recuadro de datos
+    if (st.vela < 0) return;
+    const ts = chart.timeScale(), x = ts.logicalToCoordinate(st.vela), x2 = ts.logicalToCoordinate(st.vela + 1); if (x == null) return;
+    const a = Math.max(3, x2 == null ? 6 : x2 - x);
+    s.context.save(); s.context.fillStyle = 'rgba(76,141,255,.16)'; s.context.fillRect(x - a / 2, 0, a, s.mediaSize.height); s.context.restore();
+  }
+  const capaVol = {                              // dibujos hechos sobre el volumen
+    pedir: null,
+    attached(p) { this.pedir = p.requestUpdate; },
+    detached() { this.pedir = null; },
+    updateAllViews() {},
+    paneViews() {
+      return [{ zOrder: () => 'top', renderer: () => ({ draw: t => t.useMediaCoordinateSpace(s => {
+        velaMarcada(s);
+        dibs.forEach((d, k) => { if (d.pn) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
+        if (st.previa && st.previa.pn) trazar(s.context, st.previa, s.mediaSize.width, false);
+      }) }) }];
+    },
+  };
+  vol.attachPrimitive(capaVol);
+  const repintar = () => { capa.pedir && capa.pedir(); capaVol.pedir && capaVol.pedir(); };
 
   // ¿qué dibujo hay bajo el cursor? Primero los tiradores del seleccionado.
-  function tocar(x, y) {
+  function tocar(x, y, pn) {
     const T = 7, w = chart.timeScale().width();
-    const sel = dibs[st.sel], gs = sel && sel.tipo !== 'horiz' && geo(sel);
+    const sel = dibs[st.sel], gs = sel && sel.tipo !== 'horiz' && !sel.pn === !pn && geo(sel);
     if (gs) {
       if (Math.hypot(x - gs.xa, y - gs.ya) <= 9) return { k: st.sel, parte: 'a' };
       if (Math.hypot(x - gs.xb, y - gs.yb) <= 9) return { k: st.sel, parte: 'b' };
     }
     for (let k = dibs.length - 1; k >= 0; k--) {
-      const d = dibs[k], g = geo(d); if (!g) continue; let ok = false;
+      const d = dibs[k]; if (!d.pn !== !pn) continue; const g = geo(d); if (!g) continue; let ok = false;
       if (d.tipo === 'horiz') ok = Math.abs(y - g.y) <= T;
       else if (d.tipo === 'linea') {
         const [x1, y1, x2, y2] = finLinea(d, g, w), dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
@@ -557,7 +585,7 @@
     $('prolongar').classList.toggle('on', !!(sel && sel.ext));
     $('dibujos').innerHTML = dibs.length ? dibs.map((d, k) =>
       `<div class="nivel fila ${k === st.sel ? 'sel' : ''}" data-k="${k}"><i style="background:${d.c}"></i><span>${NOMBRE[d.tipo]}
-       <small>${d.tipo === 'horiz' ? nf(d.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
+       <small>${d.pn ? 'en volumen' : d.tipo === 'horiz' ? nf(d.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
       : '<div class="vacio">Ninguno todavía</div>';
     repintar();
   }
@@ -605,6 +633,31 @@
     leyenda(b[i], b[i - 1]);
   });
 
+  // ---------- recuadro de datos de la vela (clic en una vela, como en Visual Chart)
+  function cerrarInfo() { if (st.vela < 0 && $('info').style.display !== 'block') return; st.vela = -1; $('info').style.display = 'none'; repintar(); }
+  function abrirInfo(m) {
+    const b = barras(), i = m.i; if (i > b.length - 1) return cerrarInfo();
+    if (i === st.vela) return cerrarInfo();                 // segundo clic en la misma vela: se cierra
+    const x = b[i], ant = b[i - 1], e = ep(x.time), d = new Date(e * 1000);
+    const hora = st.tf === '60m' ? ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') : '';
+    const v = ant ? (x.close / ant.close - 1) * 100 : null, cls = v == null ? '' : v >= 0 ? 'up' : 'down';
+    let s = 0, n = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { s += b[k].volume; n++; }
+    const media = s / n, rel = media ? x.volume / media : null;
+    const fila = (a, c, k) => `<tr><td>${a}</td><td class="${k || ''}">${c}</td></tr>`;
+    $('info').innerHTML = `<h3>${st.sym} · ${TF_NOMBRE[st.tf]}<button title="Cerrar">×</button></h3><table>` +
+      fila('Fecha', fecha(e) + hora) + fila('Apertura', nf(x.open)) + fila('Máximo', nf(x.high)) + fila('Mínimo', nf(x.low)) + fila('Cierre', nf(x.close)) +
+      (v == null ? '' : fila('Variación', (v >= 0 ? '+' : '') + nf(v) + ' %', cls)) +
+      fila('Rango', nf(x.high - x.low) + ' (' + nf((x.high / x.low - 1) * 100) + ' %)') +
+      fila('Volumen', x.volume.toLocaleString('es-ES')) +
+      (rel == null ? '' : fila('Vol. / media 20', nf(rel) + ' ×')) + '</table>';
+    const caja = $('info'), w = $('grafWrap').getBoundingClientRect(); caja.style.display = 'block';
+    let izq = m.cx - w.left + 16, arriba = m.cy - w.top + 10;
+    if (izq + caja.offsetWidth > chart.timeScale().width() - 4) izq = m.cx - w.left - caja.offsetWidth - 16;
+    caja.style.left = Math.max(4, izq) + 'px'; caja.style.top = Math.max(4, Math.min(w.height - caja.offsetHeight - 30, arriba)) + 'px';
+    st.vela = i; repintar();
+  }
+  $('info').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') cerrarInfo(); });
+
   // ---------- ratón sobre el gráfico: dibujar, seleccionar, mover, cambiar de tamaño
   const FORMAS = ['linea', 'horiz', 'rect', 'elipse'];
   let arr = null;                                // gesto en curso
@@ -619,17 +672,27 @@
     repintar();
   }
   // posición del cursor en el gráfico: vela (puede ser más allá de la última) y precio
-  function pos(e) {
-    const r = $('graf').getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-    if (x < 0 || y < 0 || y > chart.panes()[0].getHeight() || x > chart.timeScale().width()) return null;
-    const lg = chart.timeScale().coordinateToLogical(x), b = barras(); let p = velas.coordinateToPrice(y);
+  // pn: 0 = precio, 1 = volumen. Si se pasa `fijo`, el punto se calcula dentro de ese panel (un dibujo no cambia de panel).
+  function pos(e, fijo) {
+    const paneles = chart.panes(), b = barras(); let pn = fijo, r = null;
+    if (pn == null) {
+      for (let k = 0; k < Math.min(2, paneles.length); k++) {
+        const q = paneles[k].getHTMLElement().getBoundingClientRect();
+        if (e.clientY >= q.top && e.clientY <= q.bottom) { pn = k; r = q; }
+      }
+      if (pn == null) return null;
+    } else { if (!paneles[pn]) return null; r = paneles[pn].getHTMLElement().getBoundingClientRect(); }
+    const x = e.clientX - r.left, w = chart.timeScale().width(); let y = e.clientY - r.top;
+    if (fijo == null) { if (x < 0 || x > w) return null; } else y = Math.max(0, Math.min(r.height, y));
+    const lg = chart.timeScale().coordinateToLogical(Math.max(0, Math.min(w, x))); let p = (pn ? vol : velas).coordinateToPrice(y);
     if (lg == null || p == null || !b.length) return null;
     const i = Math.max(0, Math.round(lg)), v = b[Math.min(i, b.length - 1)];
-    if (st.iman && i <= b.length - 1) p = Math.abs(p - v.high) < Math.abs(p - v.low) ? v.high : v.low;
-    return { x, y, i, p };
+    if (st.iman && i <= b.length - 1) p = pn ? v.volume : Math.abs(p - v.high) < Math.abs(p - v.low) ? v.high : v.low;
+    return { x, y, i, p, pn, cx: e.clientX, cy: e.clientY };
   }
   function nueva(a, c, horizontal) {
     const d = { tipo: st.modo, a: dePos(a.i, a.p), b: dePos(c.i, horizontal ? a.p : c.p), tf: st.tf, c: st.color };
+    if (a.pn) d.pn = 1;
     return d;
   }
   function terminar(d) { dibs.push(d); st.sel = dibs.length - 1; setModo(null); guardarDibs(); }
@@ -645,8 +708,8 @@
   $('graf').addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     const m = pos(e); if (!m) return;
-    if (st.modo) { arr = { tipo: 'crear', ini: m }; return; }
-    const h = tocar(m.x, m.y);
+    if (st.modo) { if (st.puntoA && st.puntoA.pn !== m.pn) return; arr = { tipo: 'crear', ini: m }; return; }
+    const h = tocar(m.x, m.y, m.pn);
     if (!h) { arr = { tipo: 'vacio', ini: m }; return; }
     const d = dibs[h.k]; st.sel = h.k;
     arr = { tipo: 'editar', k: h.k, parte: h.parte, ini: m, movido: false,
@@ -657,7 +720,7 @@
   ['mousedown', 'touchstart'].forEach(ev => $('graf').addEventListener(ev, e => { if (arr && arr.tipo === 'editar') e.stopPropagation(); }, true));
 
   window.addEventListener('pointermove', e => {
-    const m = pos(e);
+    const ancla = arr && arr.ini ? arr.ini : st.puntoA, m = pos(e, ancla ? ancla.pn : undefined);
     if (arr && arr.tipo === 'editar') {
       if (!m) return;
       const d = dibs[arr.k], o = arr.o, di = m.i - arr.ini.i, dp = m.p - arr.ini.p; arr.movido = true;
@@ -675,18 +738,22 @@
       if (a && m) { st.previa = nueva(a, m, e.shiftKey && st.modo === 'linea'); repintar(); }
       return;
     }
-    $('graf').classList.toggle('sobre', !st.modo && !!m && !!tocar(m.x, m.y));
+    $('graf').classList.toggle('sobre', !st.modo && !!m && !!tocar(m.x, m.y, m.pn));
   });
 
   window.addEventListener('pointerup', e => {
     const g = arr; arr = null; $('graf').classList.remove('mano');
     if (!g) return;
-    const m = pos(e), mov = m ? Math.abs(m.x - g.ini.x) + Math.abs(m.y - g.ini.y) : 0;
+    const m = pos(e, g.ini.pn), mov = m ? Math.abs(m.x - g.ini.x) + Math.abs(m.y - g.ini.y) : 0;
     if (g.tipo === 'editar') { if (g.movido) guardarDibs(); return; }
-    if (g.tipo === 'vacio') { if (mov <= 4 && st.sel >= 0) { st.sel = -1; pintarDibujos(); } return; }
+    if (g.tipo === 'vacio') {
+      if (mov > 4 || !m) return;
+      if (st.sel >= 0) { st.sel = -1; pintarDibujos(); } else abrirInfo(m);      // clic en una vela: recuadro de datos
+      return;
+    }
     if (!m) return;
-    if (st.modo === 'fibA' || st.modo === 'fibB') { if (mov <= 6) fijarFib(m); return; }
-    if (st.modo === 'horiz') return terminar({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color });
+    if (st.modo === 'fibA' || st.modo === 'fibB') { if (mov <= 6 && !m.pn) fijarFib(m); return; }
+    if (st.modo === 'horiz') return terminar(Object.assign({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color }, m.pn ? { pn: 1 } : {}));
     const sh = e.shiftKey && st.modo === 'linea';
     if (mov > 6) return terminar(nueva(g.ini, m, sh));                     // arrastrando
     if (!st.puntoA) { st.puntoA = m; aviso('Ahora haz clic en el segundo punto'); return; }   // clic y clic
@@ -696,7 +763,7 @@
 
   document.addEventListener('keydown', e => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-    if (e.key === 'Escape') { if (st.modo) { setModo(null); pintarAnalisis(); } else if (st.sel >= 0) { st.sel = -1; pintarDibujos(); } }
+    if (e.key === 'Escape') { if (st.modo) { setModo(null); pintarAnalisis(); } else if (st.sel >= 0) { st.sel = -1; pintarDibujos(); } else cerrarInfo(); }
     else if ((e.key === 'Delete' || e.key === 'Backspace') && st.sel >= 0) { e.preventDefault(); borrarDib(st.sel); }
   });
 
