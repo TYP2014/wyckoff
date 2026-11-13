@@ -53,6 +53,7 @@
   <span class="fecha" id="fecha"></span>
   <div class="der">
     <span id="mercados"></span>
+    <a class="btn" href="cartera.html">Cartera ficticia</a>
     <a class="btn" href="index.html">Graficador</a>
   </div>
 </header>
@@ -95,7 +96,8 @@
     ${chips(x)}
     <ul>${x.motivos.map(m => `<li class="${MALOS.some(k => m.startsWith(k)) ? 'malo' : ''}">${m}</li>`).join('')}
         ${x.avisos.map(a => `<li class="av">${a.txt.replace('.', ',')}</li>`).join('')}</ul>
-    <a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}">Ver gráfico</a></div>`;
+    <a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}">Ver gráfico</a>
+    <a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}">Compra ficticia</a></div>`;
   const fila = (x, texto) => `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
     <td class="n">${nf(x.cierre)}<br><span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></td>
     <td>${texto}</td>

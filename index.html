@@ -96,6 +96,7 @@
     <div id="nombre"></div>
     <div id="precio"></div>
     <div id="actualizado"></div>
+    <a id="irCartera" href="cartera.html" style="font-weight:600;color:var(--txt);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px">Compra ficticia</a>
     <a href="scan.html" style="font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:4px 10px">Buscador y avisos →</a>
   </header>
 
@@ -173,6 +174,7 @@
 </div>
 
 <script src="lib/lightweight-charts.standalone.production.js"></script>
+<script src="lib/cartera.js"></script>
 <script>
 (() => {
   'use strict';
@@ -198,7 +200,7 @@
     fibModo: store.get('fibModo', 'auto'),   // auto | manual | off
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // modo de clic: 'fibA' | 'fibB' | 'nivel'
-    lineasFib: [], lineasAuto: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
+    lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
     lista: [], color: store.get('color', '#4c8dff'), carga: 0,
   };
   const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
@@ -299,6 +301,7 @@
     $('verZig').classList.toggle('on', st.zig);
     pintarFib(piv);
     pintarAutos();
+    pintarCartera();
     pintarWy();
     pintarDibujos();
     pintarTendencias();
@@ -341,6 +344,23 @@
     ponerMarcas();
     $('fibTipo').textContent = (tr.manual ? '· manual' : '· auto') + (sube ? ' · tramo alcista' : ' · tramo bajista');
     $('fibTabla').className = ''; $('fibTabla').innerHTML = `<table>${filas.join('')}</table>`;
+  }
+
+  // ---------- cartera ficticia: órdenes y posiciones de este valor sobre el gráfico
+  function pintarCartera() {
+    st.lineasCart.forEach(l => velas.removePriceLine(l)); st.lineasCart = [];
+    $('irCartera').href = 'cartera.html?s=' + encodeURIComponent(st.sym || '');
+    const d = st.datos['1d']; if (!d || !window.Cartera) return;
+    const linea = (price, color, title, estilo) => st.lineasCart.push(velas.createPriceLine({ price, color, title, lineWidth: 2, lineStyle: estilo, axisLabelVisible: true }));
+    Cartera.leer().filter(o => o.sym === st.sym).forEach(o => {
+      const r = Cartera.simular(o, d);
+      if (r.estado === 'pendiente' && o.precio) linea(o.precio, '#4c8dff', o.tipo === 'limite' ? 'Orden: comprar si baja' : 'Orden: comprar si sube', LC.LineStyle.LargeDashed);
+      if (r.estado === 'abierta') linea(r.entrada.precio, '#1c2330', `Compra ficticia ×${r.titulos}`, LC.LineStyle.Solid);
+      if (r.estado === 'pendiente' || r.estado === 'abierta') {
+        if (r.sl) linea(r.sl, '#e0443e', 'Stop loss', LC.LineStyle.LargeDashed);
+        if (r.tp) linea(r.tp, '#12967e', 'Objetivo', LC.LineStyle.LargeDashed);
+      }
+    });
   }
 
   // ---------- eventos Wyckoff del buscador (solo en diario)

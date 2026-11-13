@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartera ficticia – Buscador Wyckoff</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #fff; --panel: #f4f6f8; --line: #d5dbe3; --txt: #1c2330; --dim: #5f6b7a;
+    --up: #12967e; --down: #e0443e; --amber: #c98500; --accent: #4c8dff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+    font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .aviso { color: var(--amber); font-weight: 600; font-size: 13px; }
+  header .der { margin-left: auto; display: flex; gap: 6px; }
+  button, a.btn, select, input { font: inherit; color: var(--txt); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+  button, a.btn { cursor: pointer; text-decoration: none; display: inline-block; }
+  button.pri { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 7px 16px; }
+  button.mini { padding: 2px 8px; font-size: 12px; }
+  main { max-width: 1300px; margin: 0 auto; padding: 14px 20px 40px; }
+  h2 { font-size: 15px; margin: 26px 0 8px; } h2 small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+  .caja { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--panel); }
+  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; align-items: end; }
+  .form label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 3px; font-weight: 600; }
+  .form input, .form select { width: 100%; }
+  .ayuda { color: var(--dim); font-size: 13px; margin: 10px 0 0; }
+  .error { color: var(--down); font-weight: 600; margin-top: 8px; }
+  .resumen { display: flex; flex-wrap: wrap; gap: 10px; }
+  .dato { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-width: 150px; }
+  .dato b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; } .dato span { color: var(--dim); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--dim); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid #eef1f4; vertical-align: middle; font-variant-numeric: tabular-nums; }
+  td a { color: var(--txt); font-weight: 600; text-decoration: none; } td a:hover { text-decoration: underline; }
+  td input { width: 84px; padding: 3px 6px; }
+  .up { color: var(--up); } .down { color: var(--down); } .dim { color: var(--dim); font-size: 12px; }
+  .vacio { color: var(--dim); padding: 8px 0; }
+  footer { color: var(--dim); font-size: 12px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; }
+  footer li { margin: 2px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cartera ficticia</h1>
+  <span class="aviso">Simulación: aquí no se compra ni se vende nada de verdad</span>
+  <div class="der">
+    <a class="btn" href="scan.html">Buscador</a>
+    <a class="btn" href="index.html">Graficador</a>
+  </div>
+</header>
+<main>
+  <h2>Nueva orden de compra</h2>
+  <div class="caja">
+    <div class="form">
+      <div><label>Valor</label><select id="fSym"></select></div>
+      <div><label>Tipo de orden</label><select id="fTipo">
+        <option value="mercado">A mercado</option>
+        <option value="limite">Limitada: comprar si baja a…</option>
+        <option value="stop">Stop: comprar si sube a…</option></select></div>
+      <div><label>Precio de la orden</label><input id="fPrecio" inputmode="decimal" placeholder="—"></div>
+      <div><label>Importe a invertir</label><input id="fImporte" inputmode="decimal" value="3000"></div>
+      <div><label>Stop loss</label><input id="fSl" inputmode="decimal" placeholder="opcional"></div>
+      <div><label>Objetivo (venta)</label><input id="fTp" inputmode="decimal" placeholder="opcional"></div>
+      <div><label>Fecha de la orden</label><input id="fFecha" type="date"></div>
+      <div><label>Nota</label><input id="fNota" placeholder="motivo de la entrada"></div>
+      <div><button class="pri" id="fCrear">Dejar orden</button></div>
+    </div>
+    <p class="ayuda" id="fInfo"></p>
+    <div class="error" id="fError"></div>
+  </div>
+
+  <h2>Resumen</h2>
+  <div class="resumen" id="resumen"></div>
+
+  <h2>Órdenes pendientes <small id="nPen"></small></h2>
+  <div id="pendientes"></div>
+
+  <h2>Posiciones abiertas <small id="nAbi"></small></h2>
+  <div id="abiertas"></div>
+
+  <h2>Operaciones cerradas <small id="nCer"></small></h2>
+  <div id="cerradas"></div>
+
+  <h2>Copia de seguridad</h2>
+  <p class="ayuda" style="margin-top:0">Las órdenes se guardan solo en este navegador. Descarga una copia de vez en cuando.</p>
+  <button id="exportar">Descargar copia</button>
+  <button id="importar">Cargar copia</button><input type="file" id="fichero" accept="application/json" style="display:none">
+
+  <footer>
+    <b>Cómo se ejecutan las órdenes</b> (con las velas diarias, que se actualizan cada noche):
+    <ul>
+      <li>Solo cuentan las sesiones posteriores a la fecha de la orden. Poniendo una fecha pasada puedes simular «qué habría pasado».</li>
+      <li><b>A mercado:</b> compra en la apertura de la siguiente sesión.</li>
+      <li><b>Limitada:</b> compra el primer día cuyo mínimo llega al precio; si abre ya por debajo, a la apertura.</li>
+      <li><b>Stop de compra:</b> compra el primer día cuyo máximo llega al precio; si abre ya por encima, a la apertura.</li>
+      <li><b>Stop loss y objetivo:</b> se vigilan desde el día siguiente a la compra; con hueco, se sale a la apertura. Si el mismo día toca los dos, se toma el stop.</li>
+      <li>No incluye comisiones de Renta 4, cambio de divisa ni dividendos. Euros y dólares se suman por separado.</li>
+    </ul>
+    Herramienta personal de apoyo a la decisión: no ejecuta órdenes reales ni es asesoramiento financiero.
+  </footer>
+</main>
+<script src="lib/cartera.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id), C = window.Cartera;
+  const nf = (x, d = 2) => x.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+  // acepta 3,45 y 3.45; en importes, 3.000 son tres mil
+  const numLibre = (t, miles) => { const s = String(t).trim(); if (!s) return null;
+    const v = parseFloat(s.includes(',') || (miles && /^\d{1,3}(\.\d{3})+$/.test(s)) ? s.replace(/\./g, '').replace(',', '.') : s); return isFinite(v) && v > 0 ? v : null; };
+  const f = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(2, 4) : '';
+  const signo = (x, suf = '') => `<span class="${x >= 0 ? 'up' : 'down'}">${x >= 0 ? '+' : ''}${nf(x)}${suf}</span>`;
+  const TIPO = { mercado: 'A mercado', limite: 'Limitada', stop: 'Stop de compra' };
+  let lista = [], info = {}, datos = {};
+
+  async function barras(sym) {
+    if (datos[sym]) return datos[sym];
+    try {
+      const j = await fetch(`data/${sym}/1d.json`, { cache: 'no-cache' }).then(r => r.json());
+      datos[sym] = j.barras.map(x => ({ time: x[0], open: x[1], high: x[2], low: x[3], close: x[4] }));
+    } catch (e) { datos[sym] = []; }
+    return datos[sym];
+  }
+
+  async function infoForm() {
+    const sym = $('fSym').value, b = await barras(sym), u = b[b.length - 1], t = $('fTipo').value;
+    $('fPrecio').disabled = t === 'mercado'; if (t === 'mercado') $('fPrecio').value = '';
+    if (!u) { $('fInfo').textContent = 'Sin datos de este valor.'; return; }
+    const d = info[sym] ? info[sym].divisa : '';
+    $('fInfo').innerHTML = `Último cierre de <b>${sym}</b>: <b>${nf(u.close)} ${d}</b> (${f(u.time)}). ` +
+      (t === 'mercado' ? 'Se comprará en la apertura de la sesión siguiente a la fecha de la orden.'
+        : t === 'limite' ? 'Se comprará cuando el precio baje hasta el precio de la orden.'
+        : 'Se comprará cuando el precio suba hasta el precio de la orden.');
+  }
+
+  async function crear() {
+    const sym = $('fSym').value, tipo = $('fTipo').value, precio = numLibre($('fPrecio').value), importe = numLibre($('fImporte').value, true);
+    const sl = numLibre($('fSl').value), tp = numLibre($('fTp').value), fecha = $('fFecha').value || C.hoy();
+    const b = await barras(sym), u = b[b.length - 1], ref = tipo === 'mercado' ? (u ? u.close : null) : precio;
+    let err = '';
+    if (!importe) err = 'Indica el importe a invertir.';
+    else if (tipo !== 'mercado' && !precio) err = 'Indica el precio de la orden.';
+    else if (sl && ref && sl >= ref) err = 'El stop loss tiene que estar por debajo del precio de compra.';
+    else if (tp && ref && tp <= ref) err = 'El objetivo tiene que estar por encima del precio de compra.';
+    else if (ref && importe < ref) err = 'El importe no llega para comprar un solo título.';
+    $('fError').textContent = err; if (err) return;
+    const L = C.leer();
+    L.push({ id: Date.now().toString(36), sym, tipo, precio: tipo === 'mercado' ? null : precio, importe, sl, tp, fecha, nota: $('fNota').value.trim(), creada: C.hoy() });
+    C.guardar(L); ['fPrecio', 'fSl', 'fTp', 'fNota'].forEach(k => { $(k).value = ''; });
+    $('fFecha').value = C.hoy();          // la fecha vuelve a hoy para no dejar la siguiente orden en el pasado sin querer
+    pintar();
+  }
+
+  const enlace = s => `<a href="index.html?s=${encodeURIComponent(s)}">${s}</a><br><span class="dim">${info[s] ? info[s].nombre : ''}</span>`;
+  const tabla = (cab, filas, vacio) => filas.length ? `<table><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr>${filas.join('')}</table>` : `<div class="vacio">${vacio}</div>`;
+
+  async function pintar() {
+    const L = C.leer(); await Promise.all([...new Set(L.map(o => o.sym))].map(barras));
+    const R = L.map(o => ({ o, r: C.simular(o, datos[o.sym] || []), d: info[o.sym] ? info[o.sym].divisa : '' }));
+    const pen = R.filter(x => x.r.estado === 'pendiente'), abi = R.filter(x => x.r.estado === 'abierta');
+    const cer = R.filter(x => x.r.estado === 'cerrada'), can = R.filter(x => x.r.estado === 'cancelada');
+    $('nPen').textContent = `(${pen.length})`; $('nAbi').textContent = `(${abi.length})`; $('nCer').textContent = `(${cer.length + can.length})`;
+
+    $('pendientes').innerHTML = tabla(['Valor', 'Orden', 'Precio', 'Último cierre', 'Importe', 'Stop loss', 'Objetivo', 'Fecha', 'Nota', ''],
+      pen.map(({ o, r, d }) => `<tr><td>${enlace(o.sym)}</td><td>${TIPO[o.tipo]}</td><td>${o.precio ? nf(o.precio) : 'apertura'}</td>
+        <td>${r.ultimo != null ? nf(r.ultimo) + ' ' + d : '—'}${o.precio && r.ultimo ? `<br><span class="dim">a ${nf(Math.abs(o.precio / r.ultimo - 1) * 100)} %</span>` : ''}</td>
+        <td>${nf(o.importe, 0)} ${d}</td><td>${r.sl ? nf(r.sl) : '—'}</td><td>${r.tp ? nf(r.tp) : '—'}</td><td>${f(o.fecha)}</td><td class="dim">${o.nota || ''}</td>
+        <td><button class="mini" data-a="cancelar" data-id="${o.id}">Cancelar</button></td></tr>`), 'Ninguna');
+
+    $('abiertas').innerHTML = tabla(['Valor', 'Compra', 'Títulos', 'Invertido', 'Último cierre', 'Resultado', 'Stop loss', 'Objetivo', 'Riesgo', 'Nota', ''],
+      abi.map(({ o, r, d }) => `<tr><td>${enlace(o.sym)}</td><td>${nf(r.entrada.precio)}<br><span class="dim">${f(r.entrada.fecha)} · ${TIPO[o.tipo]}</span></td>
+        <td>${r.titulos}</td><td>${nf(r.invertido, 0)} ${d}</td><td>${nf(r.ultimo)}<br><span class="dim">${f(r.fechaUltimo)}</span></td>
+        <td>${signo(r.pyg, ' ' + d)}<br>${signo(r.pct, ' %')}</td>
+        <td><input data-sl="${o.id}" value="${r.sl ? nf(r.sl) : ''}" placeholder="—"></td><td><input data-tp="${o.id}" value="${r.tp ? nf(r.tp) : ''}" placeholder="—"></td>
+        <td>${r.riesgo != null ? nf(r.riesgo, 0) + ' ' + d : '—'}</td><td class="dim">${o.nota || ''}</td>
+        <td><button class="mini" data-a="niveles" data-id="${o.id}">Guardar stop / objetivo</button> <button class="mini" data-a="vender" data-id="${o.id}">${o.venta ? 'Venta pendiente' : 'Vender a mercado'}</button></td></tr>`), 'Ninguna');
+
+    $('cerradas').innerHTML = tabla(['Valor', 'Compra', 'Venta', 'Motivo', 'Títulos', 'Resultado', 'Nota', ''],
+      cer.map(({ o, r, d }) => `<tr><td>${enlace(o.sym)}</td><td>${nf(r.entrada.precio)}<br><span class="dim">${f(r.entrada.fecha)}</span></td>
+        <td>${nf(r.salida.precio)}<br><span class="dim">${f(r.salida.fecha)}</span></td><td>${r.salida.motivo}</td><td>${r.titulos}</td>
+        <td>${signo(r.pyg, ' ' + d)}<br>${signo(r.pct, ' %')}</td><td class="dim">${o.nota || ''}</td>
+        <td><button class="mini" data-a="borrar" data-id="${o.id}">Quitar</button></td></tr>`)
+      .concat(can.map(({ o }) => `<tr><td>${enlace(o.sym)}</td><td colspan="2" class="dim">${TIPO[o.tipo]}${o.precio ? ' a ' + nf(o.precio) : ''} · ${f(o.fecha)}</td><td>Cancelada</td><td></td><td></td>
+        <td class="dim">${o.nota || ''}</td><td><button class="mini" data-a="borrar" data-id="${o.id}">Quitar</button></td></tr>`)), 'Ninguna todavía');
+
+    const divs = [...new Set(R.filter(x => x.r.entrada).map(x => x.d))];
+    $('resumen').innerHTML = divs.length ? divs.map(d => {
+      const A = abi.filter(x => x.d === d), Z = cer.filter(x => x.d === d), gan = Z.filter(x => x.r.pyg > 0).length;
+      const s = (X, k) => X.reduce((t, x) => t + (x.r[k] || 0), 0);
+      return `<div class="dato"><span>Invertido ahora (${d})</span><b>${nf(s(A, 'invertido'), 0)}</b></div>
+        <div class="dato"><span>Resultado abierto (${d})</span><b>${signo(s(A, 'pyg'))}</b></div>
+        <div class="dato"><span>Resultado cerrado (${d})</span><b>${signo(s(Z, 'pyg'))}</b></div>
+        <div class="dato"><span>Operaciones cerradas (${d})</span><b>${Z.length}${Z.length ? ` · ${gan} ganadoras` : ''}</b></div>`;
+    }).join('') : '<div class="vacio">Sin operaciones todavía</div>';
+  }
+
+  document.addEventListener('click', e => {
+    const a = e.target.dataset && e.target.dataset.a, id = e.target.dataset && e.target.dataset.id; if (!a) return;
+    const L = C.leer(), o = L.find(x => x.id === id); if (!o) return;
+    if (a === 'cancelar') o.cancelada = C.hoy();
+    else if (a === 'vender') { if (o.venta) delete o.venta; else o.venta = C.hoy(); }
+    else if (a === 'borrar') L.splice(L.indexOf(o), 1);
+    else if (a === 'niveles') {
+      const sl = numLibre(document.querySelector(`[data-sl="${id}"]`).value), tp = numLibre(document.querySelector(`[data-tp="${id}"]`).value);
+      (o.cambios = o.cambios || []).push({ fecha: C.hoy(), sl, tp });
+    }
+    C.guardar(L); pintar();
+  });
+  $('fCrear').onclick = crear;
+  $('fSym').onchange = infoForm; $('fTipo').onchange = infoForm;
+  $('exportar').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(C.leer(), null, 1)], { type: 'application/json' }));
+    a.download = `cartera-ficticia-${C.hoy()}.json`; a.click();
+  };
+  $('importar').onclick = () => $('fichero').click();
+  $('fichero').onchange = e => {
+    const fi = e.target.files[0]; if (!fi) return;
+    fi.text().then(t => { const L = JSON.parse(t); if (Array.isArray(L)) { C.guardar(L); pintar(); } }).catch(() => { $('fError').textContent = 'El archivo no es una copia válida.'; });
+  };
+
+  (async () => {
+    lista = await fetch('config/tickers.json', { cache: 'no-cache' }).then(r => r.json());
+    lista.forEach(x => { info[x.symbol] = x; });
+    const grupos = {}; lista.forEach(x => { (grupos[x.mercado] = grupos[x.mercado] || []).push(x); });
+    $('fSym').innerHTML = Object.keys(grupos).map(m => `<optgroup label="${m}">${grupos[m].slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+      .map(x => `<option value="${x.symbol}">${x.nombre} (${x.symbol})</option>`).join('')}</optgroup>`).join('');
+    const q = new URLSearchParams(location.search);
+    if (q.get('s') && info[q.get('s')]) $('fSym').value = q.get('s');
+    $('fFecha').value = C.hoy();
+    await infoForm(); await pintar();
+  })();
+})();
+</script>
+</body>
+</html>
