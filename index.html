@@ -144,6 +144,7 @@
       <span class="et">Soportes / resistencias</span>
       <button id="wy" title="Marca en el diario los eventos Wyckoff y el rango que detecta el buscador">Wyckoff</button>
       <button id="srAuto" title="Niveles donde el precio se ha parado varias veces (máximos y mínimos repetidos)">Automáticos</button>
+      <button id="dist" title="Distribución en zona clavicular (Paco Gómez, 20/05/2014): llega a una resistencia de varios toques, se queda en un lateral estrecho con volumen alto sin desplazamiento y rompe la parte baja (clavicular) con intención. Solo lectura visual: en la prueba en diario no anticipó caídas">Distribución</button>
     </div>
     <div class="grupo">
       <span class="et">Tramos</span>
@@ -215,7 +216,7 @@
     fibAuto: store.get('fibAuto', false), tramoAuto: null,
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // herramienta de dibujo armada
-    lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
+    lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true), dist: store.get('dist', false), lineasDist: [],
     volInt: store.get('volInt', true), volTam: store.get('volTam', 0.25), lectura: store.get('lectura', true),
     lista: [], grupo: store.get('grupo', null), color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
   };
@@ -360,6 +361,7 @@
     $('verZig').classList.toggle('on', st.zig);
     pintarFib(piv);
     pintarAutos();
+    pintarDist();
     pintarCartera();
     pintarWy();
     pintarDibujos();
@@ -434,7 +436,7 @@
       const malo = ['UT', 'SOW', 'LPSY'].includes(e.tipo), abajo = ['SC', 'ST', 'Spring', 'Test', 'LPS'].includes(e.tipo);
       return { time: e.fecha, position: abajo ? 'belowBar' : 'aboveBar', color: malo ? '#e0443e' : '#3b6fe0', shape: 'circle', text: e.tipo };
     }) : [];
-    marcas.setMarkers(st.marcasFib.concat(ev).sort((x, y) => ep(x.time) - ep(y.time)));
+    marcas.setMarkers(st.marcasFib.concat(ev, st.marcasDist || []).sort((x, y) => ep(x.time) - ep(y.time)));
   }
   function pintarWy() {
     $('wy').classList.toggle('on', st.wy);
@@ -475,6 +477,60 @@
     }).sort((x, y) => y.peso - x.peso)
       .filter((x, k, arr) => !arr.slice(0, k).some(y => Math.abs(y.p - x.p) < tol * 0.6))   // sin niveles pegados: queda el más fuerte
       .slice(0, 8).sort((x, y) => y.p - x.p);
+  }
+
+  // ---------- distribución en zona clavicular (Paco Gómez, tutoría 20/05/2014)
+  // DÓNDE LLEGA: techo de un lateral a menos de 0,8 ATR de una resistencia con 3 giros o más (±4 velas, 300 velas antes).
+  // CÓMO LLEGA: lateral de 6-30 velas de alto <= 3 ATR, llegando desde abajo, con alguna vela de volumen >= 1,5x
+  //   la media de 50 y rango <= 1,2 ATR (volumen sin desplazamiento: «estos son ventas»).
+  // ROTURA CON INTENCIÓN: cierre bajo el suelo del lateral (clavicular), rango >= 1 ATR, cierre en el tercio bajo y volumen >= media.
+  // Mismo criterio que scripts/distribucion.py (la resistencia, aproximada por giros cercanos). Solo lectura visual.
+  function distribuciones(b) {
+    const n = b.length, a = atr(b), k = 4, piv = [], out = [];
+    for (let i = k; i < n - k; i++) {
+      let esH = true, esL = true;
+      for (let j = i - k; j <= i + k; j++) { if (b[j].high > b[i].high) esH = false; if (b[j].low < b[i].low) esL = false; }
+      if (esH) piv.push({ i, p: b[i].high }); if (esL) piv.push({ i, p: b[i].low });
+    }
+    const P = [0]; b.forEach(x => P.push(P[P.length - 1] + x.volume));
+    for (let q = 120; q < n; q++) {
+      const vm = (P[q] - P[q - 50]) / 50;
+      if (!vm || (out.length && q - out[out.length - 1].q < 5)) continue;   // una sola rotura por zona
+      const x = b[q], A = a[q - 1], r = x.high - x.low;
+      if (r < A || x.close - x.low > 0.35 * r || x.volume < vm) continue;
+      let techo = -Infinity, suelo = Infinity;
+      for (let L = 1; L <= 30; L++) {
+        const ini = q - L; techo = Math.max(techo, b[ini].high); suelo = Math.min(suelo, b[ini].low);
+        if (techo - suelo > 3 * A) break;
+        if (L < 6 || x.close >= suelo) continue;
+        let previo = Infinity; for (let j = Math.max(0, ini - 40); j < ini; j++) previo = Math.min(previo, b[j].low);
+        if (previo > suelo - 1.5 * A) continue;
+        const toques = piv.filter(p => p.i >= ini - 300 && p.i < ini - k && Math.abs(p.p - techo) <= 0.8 * A).length;
+        if (toques < 3) continue;
+        let abs = -1;
+        for (let j = ini; j < q; j++) {
+          if (b[j].volume >= 1.5 * vm && b[j].high - b[j].low <= 1.2 * a[j] && (abs < 0 || b[j].volume > b[abs].volume)) abs = j;
+        }
+        if (abs < 0) continue;
+        out.push({ q, ini, abs, techo, suelo, toques, obj: previo, vr: x.volume / vm });
+        break;
+      }
+    }
+    return out;
+  }
+  function pintarDist() {
+    st.lineasDist.forEach(l => velas.removePriceLine(l)); st.lineasDist = [];
+    $('dist').classList.toggle('on', st.dist);
+    const b = barras(), ev = st.dist ? distribuciones(b) : [];
+    st.marcasDist = [];
+    ev.forEach(e => {
+      st.marcasDist.push({ time: b[e.abs].time, position: 'aboveBar', color: '#e8890c', shape: 'circle', size: 0.7, text: 'Vol. sin desplaz.' });
+      st.marcasDist.push({ time: b[e.q].time, position: 'aboveBar', color: '#e0443e', shape: 'arrowDown', text: 'Rompe clavicular' });
+    });
+    const u = ev[ev.length - 1];
+    if (u && b.length - u.q <= 60) [[u.techo, 'Resistencia', LC.LineStyle.Dotted], [u.suelo, 'Clavicular', LC.LineStyle.Solid], [u.obj, 'Obj. mín. distrib.', LC.LineStyle.Dotted]]
+      .forEach(([p, t, ls]) => st.lineasDist.push(velas.createPriceLine({ price: p, color: '#e8890c', lineWidth: 1, lineStyle: ls, axisLabelVisible: true, title: t })));
+    ponerMarcas();
   }
 
   function pintarAutos() {
@@ -893,6 +949,7 @@
   $('sens').value = String(st.sens);
   $('sens').onchange = e => { st.sens = +e.target.value; store.set('sens', st.sens); pintarAnalisis(); };
   $('wy').onclick = () => { st.wy = !st.wy; store.set('wy', st.wy); pintarAnalisis(); };
+  $('dist').onclick = () => { st.dist = !st.dist; store.set('dist', st.dist); pintarDist(); };
   $('srAuto').onclick = () => { st.srAuto = !st.srAuto; store.set('srAuto', st.srAuto); pintarAutos(); };
   $('volInt').onclick = () => { st.volInt = !st.volInt; store.set('volInt', st.volInt); aplicarVolumen(); };
   $('lectura').onclick = () => { st.lectura = !st.lectura; store.set('lectura', st.lectura); pintarLectura(); };
