@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import entradas  # noqa: E402
+import patrones  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -361,6 +362,18 @@ def analizar(info):
                     r["entrada"] = sg
                 break
     r["vigilar"] = None if r["entrada"] else entradas.vigilar(*ser, r["tendS"])
+    # patrones de Paco Gómez en soportes y resistencias (hoy o en las 4 sesiones anteriores, si siguen vivos)
+    r["patron"] = None
+    for back in range(0, 5):
+        sl = [x[:len(x) - back] if back else x for x in ser]
+        pt = patrones.detectar(*sl, r["tendS"])
+        if pt:
+            pt = pt[0]
+            if back == 0 or pt["stop"] < cierre:
+                pt["fecha"], pt["hace"] = d["t"][-1 - back], back
+                pt["suceso"] = d["t"][max(0, d["n"] - W) + pt.pop("i_suceso")]
+                r["patron"] = pt
+            break
 
     r["puntos"], r["motivos"], r["descartada"] = puntos, motivos, bool(dist)
     r["candidata"] = bool(mayor and not dist and puntos >= 6 and (reciente or ((en_fib or rango) and en_sop)))
@@ -384,6 +397,8 @@ def main():
     cand = [x["symbol"] for x in out if x["candidata"]]
     ent = [x["symbol"] for x in out if x.get("entrada")]
     print(f"Entradas tras corrección: {len(ent)} ({', '.join(ent)})")
+    pat = [x["symbol"] for x in out if x.get("patron")]
+    print(f"Patrones en soportes: {len(pat)} ({', '.join(pat)})")
     print(f"Scan: {len(out)} valores, {len(cand)} candidatas ({', '.join(cand)}), {errores} errores")
     return 1 if errores else 0
 
