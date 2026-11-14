@@ -137,6 +137,7 @@
     <div class="grupo">
       <span class="et">Volumen</span>
       <button id="volInt" title="Volumen integrado en el gráfico de precio (como Visual Chart) o en panel aparte">Integrado</button>
+      <button id="lectura" title="Flechas sobre el volumen como en las tutorías de Paco Gómez: negro compras, rojo ventas, azul sin demanda, verde sin oferta, naranja absorción">Lectura</button>
       <select id="volTam" title="Altura del volumen integrado">
         <option value="0.15">Pequeño</option>
         <option value="0.25">Medio</option>
@@ -219,7 +220,7 @@
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // herramienta de dibujo armada
     lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
-    volInt: store.get('volInt', true), volTam: store.get('volTam', 0.25),
+    volInt: store.get('volInt', true), volTam: store.get('volTam', 0.25), lectura: store.get('lectura', true),
     lista: [], grupo: store.get('grupo', null), color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
   };
   const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
@@ -295,6 +296,30 @@
   }, 1);
   const marcas = LC.createSeriesMarkers(velas, []);
   const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(3); p[1].setStretchFactor(1); } };
+  // Lectura del volumen (leyenda de Paco Gómez), comparando cada vela con las 20 anteriores:
+  //  compras (negro): sube, volumen >= 1,5x media, rango amplio y cierre en el tercio alto
+  //  ventas (rojo): baja, volumen >= 1,5x media, rango amplio y cierre en el tercio bajo
+  //  absorción (naranja): volumen >= 1,8x media con rango estrecho (esfuerzo sin resultado)
+  //  sin demanda (azul): sube con rango estrecho y menos volumen que las dos velas anteriores
+  //  sin oferta (verde): baja con rango estrecho y menos volumen que las dos velas anteriores
+  const marcasVol = LC.createSeriesMarkers(vol, []);
+  function lecturaVol(b) {
+    const M = [];
+    for (let i = 21; i < b.length; i++) {
+      let sv = 0, sr = 0; for (let k = i - 20; k < i; k++) { sv += b[k].volume; sr += b[k].high - b[k].low; }
+      const vm = sv / 20, rm = sr / 20, x = b[i], r = x.high - x.low, cp = r > 0 ? (x.close - x.low) / r : 0.5;
+      const sube = x.close > b[i - 1].close, baja = x.close < b[i - 1].close;
+      let t = null;
+      if (x.volume >= 1.8 * vm && r <= 0.8 * rm) t = ['#e8890c', 'Absorción'];
+      else if (sube && x.volume >= 1.5 * vm && r >= 1.2 * rm && cp >= 0.65) t = ['#1c2330', 'Compras'];
+      else if (baja && x.volume >= 1.5 * vm && r >= 1.2 * rm && cp <= 0.35) t = ['#e0443e', 'Ventas'];
+      else if (sube && r <= 0.8 * rm && x.volume < b[i - 1].volume && x.volume < b[i - 2].volume) t = ['#2f6fe0', 'Sin demanda'];
+      else if (baja && r <= 0.8 * rm && x.volume < b[i - 1].volume && x.volume < b[i - 2].volume) t = ['#12967e', 'Sin oferta'];
+      if (t) M.push({ time: x.time, position: 'aboveBar', color: t[0], shape: 'arrowDown', size: 0.6, id: t[1] });
+    }
+    return M;
+  }
+  const pintarLectura = () => { marcasVol.setMarkers(st.lectura ? lecturaVol(barras()) : []); $('lectura').classList.toggle('on', st.lectura); };
   const colVol = () => st.volInt ? 'rgba(0,0,0,0.42)' : '#000000';
   // Volumen integrado en el precio (abajo, con escala propia) o en panel aparte
   function aplicarVolumen() {
@@ -323,6 +348,7 @@
     const vm = []; let s = 0;
     for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
     volMedia.setData(vm);
+    pintarLectura();
     chart.applyOptions({ timeScale: { timeVisible: st.tf === '60m', secondsVisible: false } });
     ajustarPaneles(); cerrarInfo();
     if (resetVista) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, b.length - 220), to: b.length + 6 });
@@ -873,6 +899,7 @@
   $('wy').onclick = () => { st.wy = !st.wy; store.set('wy', st.wy); pintarAnalisis(); };
   $('srAuto').onclick = () => { st.srAuto = !st.srAuto; store.set('srAuto', st.srAuto); pintarAutos(); };
   $('volInt').onclick = () => { st.volInt = !st.volInt; store.set('volInt', st.volInt); aplicarVolumen(); };
+  $('lectura').onclick = () => { st.lectura = !st.lectura; store.set('lectura', st.lectura); pintarLectura(); };
   $('volTam').onchange = e => { st.volTam = +e.target.value; store.set('volTam', st.volTam); aplicarVolumen(); };
   $('verZig').onclick = () => { st.zig = !st.zig; store.set('zig', st.zig); pintarAnalisis(); };
 
