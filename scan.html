@@ -137,7 +137,7 @@
       <td class="n">${nf(x.cierre)}</td><td class="n">${nf(g.origen)} → ${nf(g.techo)}</td>
       <td class="n">${nf(g.retr)} %<br><span style="color:var(--dim);font-size:12px">mínimo ${nf(g.minimo)}</span></td>
       <td class="n">${nf(g.z618)} – ${nf(g.z382)}</td>
-      <td class="n">${g.vol_cor == null ? '—' : nf(g.vol_cor) + '× la media'}<br>${g.seca ? '<span class="up">volumen seco</span>' : '<span class="flat">con volumen</span>'}</td></tr>`; }).join('') + '</table>';
+      <td class="n">${g.vol_cor == null ? '—' : nf(g.vol_cor) + '× la media'}<br>${g.seca ? '<span class="up">volumen seco</span>' : (g.vol_imp != null && g.vol_imp <= g.vol_cor ? '<span class="flat">el impulso tuvo menos volumen</span>' : '<span class="flat">con volumen</span>')}</td></tr>`; }).join('') + '</table>';
   }
   function pintar() {
     const D = datos.filter(x => mercado === 'Todos' || (x.indices || []).includes(mercado));
