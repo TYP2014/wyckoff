@@ -124,6 +124,7 @@
     <div class="grupo">
       <span class="et">Dibujar</span>
       <button id="t_linea" title="Línea libre: arrastra de un punto a otro, o clic y clic. Con Mayús queda horizontal">Línea</button>
+      <button id="t_canal" title="Canal: traza la línea base (arrastra o clic y clic); la paralela se coloca sola en el extremo opuesto y se ajusta tirando de su tirador central">Canal</button>
       <button id="t_horiz" title="Línea horizontal de lado a lado: un clic al precio">Horizontal</button>
       <button id="t_rect" title="Rectángulo: arrastra de una esquina a la opuesta">Rectángulo</button>
       <button id="t_elipse" title="Elipse o círculo: arrastra de un extremo al otro">Elipse</button>
@@ -132,6 +133,15 @@
       <button id="iman" title="Imán: ajusta los puntos al máximo o mínimo de la vela">Imán</button>
       <button id="prolongar" title="Prolonga hacia la derecha la línea seleccionada" disabled>Prolongar</button>
       <button id="borrar" title="Borra el dibujo seleccionado (tecla Supr)" disabled>Borrar</button>
+    </div>
+    <div class="grupo">
+      <span class="et">Volumen</span>
+      <button id="volInt" title="Volumen integrado en el gráfico de precio (como Visual Chart) o en panel aparte">Integrado</button>
+      <select id="volTam" title="Altura del volumen integrado">
+        <option value="0.15">Pequeño</option>
+        <option value="0.25">Medio</option>
+        <option value="0.38">Grande</option>
+      </select>
     </div>
     <div class="grupo">
       <span class="et">Soportes / resistencias</span>
@@ -169,7 +179,7 @@
       <section>
         <h2>Mis dibujos</h2>
         <div id="dibujos"></div>
-        <p class="nota">Fibonacci es una herramienta más: se selecciona, se mueve, se cambia por sus extremos y se borra igual. Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Se puede dibujar también en el volumen. Clic en una vela: recuadro con sus datos.</p>
+        <p class="nota">Fibonacci es una herramienta más: se selecciona, se mueve, se cambia por sus extremos y se borra igual. Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Con el volumen en panel aparte se puede dibujar también sobre él. Canal: tira del tirador central para mover la paralela. Clic en una vela: recuadro con sus datos.</p>
       </section>
       <section>
         <h2>Soportes y resistencias automáticos </h2>
@@ -209,6 +219,7 @@
     sens: store.get('sens', 5), zig: store.get('zig', false),
     modo: null, puntoA: null,        // herramienta de dibujo armada
     lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true),
+    volInt: store.get('volInt', true), volTam: store.get('volTam', 0.25),
     lista: [], grupo: store.get('grupo', null), color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
   };
   const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
@@ -284,13 +295,31 @@
   }, 1);
   const marcas = LC.createSeriesMarkers(velas, []);
   const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(3); p[1].setStretchFactor(1); } };
+  const colVol = () => st.volInt ? 'rgba(0,0,0,0.42)' : '#000000';
+  // Volumen integrado en el precio (abajo, con escala propia) o en panel aparte
+  function aplicarVolumen() {
+    if (st.volInt) {
+      vol.moveToPane(0); volMedia.moveToPane(0);
+      vol.applyOptions({ priceScaleId: 'vol' }); volMedia.applyOptions({ priceScaleId: 'vol' });
+      chart.priceScale('vol', 0).applyOptions({ scaleMargins: { top: 1 - st.volTam, bottom: 0 }, visible: false });
+      velas.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: st.volTam * 0.6 } });
+      while (chart.panes().length > 1) chart.removePane(chart.panes().length - 1);
+    } else {
+      vol.moveToPane(1); volMedia.moveToPane(1);
+      vol.applyOptions({ priceScaleId: 'right' }); volMedia.applyOptions({ priceScaleId: 'right' });
+      velas.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+    }
+    const b = barras(); vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: colVol() })));
+    $('volInt').classList.toggle('on', st.volInt); $('volTam').disabled = !st.volInt; $('volTam').value = String(st.volTam);
+    ajustarPaneles(); repintar && repintar();
+  }
 
   const barras = () => st.datos[st.tf] || [];
 
   function pintar(resetVista) {
     const b = barras();
     velas.setData(b.map(x => ({ time: x.time, open: x.open, high: x.high, low: x.low, close: x.close })));
-    vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: '#000000' })));
+    vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: colVol() })));
     const vm = []; let s = 0;
     for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
     volMedia.setData(vm);
@@ -485,7 +514,13 @@
     if (d.tipo === 'horiz') { const y = se.priceToCoordinate(d.p); return y == null ? null : { y }; }
     const ts = chart.timeScale(), xa = ts.logicalToCoordinate(aIdx(d.a, d.tf)), xb = ts.logicalToCoordinate(aIdx(d.b, d.tf));
     const ya = se.priceToCoordinate(d.a.p), yb = se.priceToCoordinate(d.b.p);
-    return [xa, xb, ya, yb].some(v => v == null) ? null : { xa, ya, xb, yb };
+    if ([xa, xb, ya, yb].some(v => v == null)) return null;
+    if (d.tipo === 'canal') {
+      const yca = se.priceToCoordinate(d.a.p + (d.o || 0)), ycb = se.priceToCoordinate(d.b.p + (d.o || 0));
+      if (yca == null || ycb == null) return null;
+      return { xa, ya, xb, yb, yca, ycb, xc: (xa + xb) / 2, yc: (yca + ycb) / 2 };
+    }
+    return { xa, ya, xb, yb };
   }
   function finLinea(d, g, w) {                   // extremos del trazo, con la prolongación si la tiene
     let x1 = g.xa, y1 = g.ya, x2 = g.xb, y2 = g.yb;
@@ -505,6 +540,14 @@
     } else if (d.tipo === 'linea') {
       const [x1, y1, x2, y2] = finLinea(d, g, w);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    } else if (d.tipo === 'canal') {
+      const [x1, y1, x2, y2] = finLinea(d, g, w), [u1, v1, u2, v2] = finLinea(d, { xa: g.xa, ya: g.yca, xb: g.xb, yb: g.ycb }, w);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(u2, v2); ctx.lineTo(u1, v1); ctx.closePath();
+      ctx.globalAlpha = 0.06; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(u1, v1); ctx.lineTo(u2, v2); ctx.stroke();
+      ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.globalAlpha = 0.6;      // línea media del canal
+      ctx.beginPath(); ctx.moveTo(x1, (y1 + v1) / 2); ctx.lineTo(x2, (y2 + v2) / 2); ctx.stroke(); ctx.restore();
     } else if (d.tipo === 'fib') {               // niveles desde el tramo hacia la derecha; 0 % en el final, 100 % en el inicio
       const x0 = Math.min(g.xa, g.xb), N = nivelesFib(d);
       ctx.save(); ctx.setLineDash([5, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.xa, g.ya); ctx.lineTo(g.xb, g.yb); ctx.stroke(); ctx.restore();
@@ -525,7 +568,7 @@
     }
     if (sel && d.tipo !== 'horiz') {             // tiradores en los dos extremos
       ctx.lineWidth = 2; ctx.fillStyle = '#fff';
-      [[g.xa, g.ya], [g.xb, g.yb]].forEach(([x, y]) => { ctx.beginPath(); ctx.rect(x - 5, y - 5, 10, 10); ctx.fill(); ctx.stroke(); });
+      [[g.xa, g.ya], [g.xb, g.yb]].concat(d.tipo === 'canal' ? [[g.xc, g.yc]] : []).forEach(([x, y]) => { ctx.beginPath(); ctx.rect(x - 5, y - 5, 10, 10); ctx.fill(); ctx.stroke(); });
     }
     ctx.restore();
   }
@@ -582,14 +625,16 @@
     if (gs) {
       if (Math.hypot(x - gs.xa, y - gs.ya) <= 9) return { k: st.sel, parte: 'a' };
       if (Math.hypot(x - gs.xb, y - gs.yb) <= 9) return { k: st.sel, parte: 'b' };
+      if (sel.tipo === 'canal' && Math.hypot(x - gs.xc, y - gs.yc) <= 9) return { k: st.sel, parte: 'c' };
     }
     for (let k = dibs.length - 1; k >= 0; k--) {
       const d = dibs[k]; if (!d.pn !== !pn) continue; const g = geo(d); if (!g) continue; let ok = false;
       if (d.tipo === 'horiz') ok = Math.abs(y - g.y) <= T;
-      else if (d.tipo === 'linea') {
-        const [x1, y1, x2, y2] = finLinea(d, g, w), dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
-        const u = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0;
-        ok = Math.hypot(x - (x1 + u * dx), y - (y1 + u * dy)) <= T;
+      else if (d.tipo === 'linea' || d.tipo === 'canal') {
+        const cerca = gg => { const [x1, y1, x2, y2] = finLinea(d, gg, w), dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
+          const u = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0;
+          return Math.hypot(x - (x1 + u * dx), y - (y1 + u * dy)) <= T; };
+        ok = cerca(g) || (d.tipo === 'canal' && cerca({ xa: g.xa, ya: g.yca, xb: g.xb, yb: g.ycb }));
       } else if (d.tipo === 'fib') {
         const dx = g.xb - g.xa, dy = g.yb - g.ya, L = dx * dx + dy * dy;
         const u = L ? Math.max(0, Math.min(1, ((x - g.xa) * dx + (y - g.ya) * dy) / L)) : 0;
@@ -609,12 +654,12 @@
     return null;
   }
 
-  const NOMBRE = { linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse', fib: 'Fibonacci' };
+  const NOMBRE = { canal: 'Canal', linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse', fib: 'Fibonacci' };
   function pintarDibujos() {
     if (st.sel >= dibs.length) st.sel = -1;
     const sel = dibs[st.sel];
     $('borrar').disabled = !sel;
-    $('prolongar').disabled = !(sel && sel.tipo === 'linea');
+    $('prolongar').disabled = !(sel && (sel.tipo === 'linea' || sel.tipo === 'canal'));
     $('prolongar').classList.toggle('on', !!(sel && sel.ext));
     $('dibujos').innerHTML = dibs.length ? dibs.map((d, k) =>
       `<div class="nivel fila ${k === st.sel ? 'sel' : ''}" data-k="${k}"><i style="background:${d.c}"></i><span>${NOMBRE[d.tipo]}
@@ -629,7 +674,7 @@
     const f = e.target.closest('.fila'); if (f) { st.sel = +f.dataset.k; pintarDibujos(); }
   });
   $('borrar').onclick = () => borrarDib(st.sel);
-  $('prolongar').onclick = () => { const d = dibs[st.sel]; if (d && d.tipo === 'linea') { d.ext = !d.ext; guardarDibs(); } };
+  $('prolongar').onclick = () => { const d = dibs[st.sel]; if (d && (d.tipo === 'linea' || d.tipo === 'canal')) { d.ext = !d.ext; guardarDibs(); } };
   $('iman').classList.toggle('on', st.iman);
   $('iman').onclick = () => { st.iman = !st.iman; store.set('iman', st.iman); $('iman').classList.toggle('on', st.iman); };
 
@@ -693,7 +738,7 @@
   $('info').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') cerrarInfo(); });
 
   // ---------- ratón sobre el gráfico: dibujar, seleccionar, mover, cambiar de tamaño
-  const FORMAS = ['linea', 'horiz', 'rect', 'elipse', 'fib'];
+  const FORMAS = ['linea', 'canal', 'horiz', 'rect', 'elipse', 'fib'];
   let arr = null;                                // gesto en curso
   function aviso(txt) { $('aviso').style.display = txt ? 'block' : 'none'; $('aviso').textContent = txt || ''; }
   function setModo(m) {
@@ -727,7 +772,19 @@
     const f = st.modo === 'fib';
     const d = { tipo: st.modo, a: dePos(a.i, f ? pegar(a) : a.p), b: dePos(c.i, horizontal ? a.p : f ? pegar(c) : c.p), tf: st.tf, c: st.color };
     if (a.pn) d.pn = 1;
+    if (d.tipo === 'canal') { d.ext = true; d.o = offsetCanal(d); }
     return d;
+  }
+  // paralela del canal: por el extremo más alejado (máximos o mínimos) entre los dos puntos de la base
+  function offsetCanal(d) {
+    const b = barras(), ia = aIdx(d.a, d.tf), ib = aIdx(d.b, d.tf), i1 = Math.max(0, Math.min(ia, ib)), i2 = Math.min(b.length - 1, Math.max(ia, ib));
+    if (d.pn || ib === ia || i2 <= i1) return 0;
+    let up = 0, dn = 0;
+    for (let i = i1; i <= i2; i++) {
+      const base = d.a.p + (d.b.p - d.a.p) * (i - ia) / (ib - ia);
+      up = Math.max(up, b[i].high - base); dn = Math.min(dn, b[i].low - base);
+    }
+    return Math.round((up >= -dn ? up : dn) * 10000) / 10000;
   }
   function terminar(d) { dibs.push(d); st.sel = dibs.length - 1; setModo(null); guardarDibs(); }
   // Fibonacci: si el punto está cerca del máximo o del mínimo de la vela, se ajusta a él; si no, queda donde se marca
@@ -746,7 +803,7 @@
     if (!h) { arr = { tipo: 'vacio', ini: m }; return; }
     const d = dibs[h.k]; st.sel = h.k;
     arr = { tipo: 'editar', k: h.k, parte: h.parte, ini: m, movido: false,
-      o: d.tipo === 'horiz' ? { p: d.p } : { ia: aIdx(d.a, d.tf), pa: d.a.p, ib: aIdx(d.b, d.tf), pb: d.b.p } };
+      o: d.tipo === 'horiz' ? { p: d.p } : { ia: aIdx(d.a, d.tf), pa: d.a.p, ib: aIdx(d.b, d.tf), pb: d.b.p, oc: d.o || 0 } };
     $('graf').classList.add('mano'); pintarDibujos();
   }, true);
   // si se ha cogido un dibujo, el gráfico no debe enterarse (no se desplaza)
@@ -760,6 +817,10 @@
       if (d.tipo === 'horiz') d.p = Math.round((st.iman ? m.p : o.p + dp) * 100) / 100;
       else {
         const pm = d.tipo === 'fib' ? pegar(m) : m.p;
+        if (arr.parte === 'c') {                  // tirador central del canal: mueve solo la paralela
+          const base = o.ib === o.ia ? o.pa : o.pa + (o.pb - o.pa) * (m.i - o.ia) / (o.ib - o.ia);
+          d.o = Math.round((m.p - base) * 10000) / 10000; repintar(); return;
+        }
         if (arr.parte === 'a') { d.a = dePos(m.i, pm); d.b = dePos(o.ib, o.pb); }
         else if (arr.parte === 'b') { d.a = dePos(o.ia, o.pa); d.b = dePos(m.i, e.shiftKey && d.tipo === 'linea' ? o.pa : pm); }
         else { d.a = dePos(o.ia + di, o.pa + dp); d.b = dePos(o.ib + di, o.pb + dp); }
@@ -811,6 +872,8 @@
   $('sens').onchange = e => { st.sens = +e.target.value; store.set('sens', st.sens); pintarAnalisis(); };
   $('wy').onclick = () => { st.wy = !st.wy; store.set('wy', st.wy); pintarAnalisis(); };
   $('srAuto').onclick = () => { st.srAuto = !st.srAuto; store.set('srAuto', st.srAuto); pintarAutos(); };
+  $('volInt').onclick = () => { st.volInt = !st.volInt; store.set('volInt', st.volInt); aplicarVolumen(); };
+  $('volTam').onchange = e => { st.volTam = +e.target.value; store.set('volTam', st.volTam); aplicarVolumen(); };
   $('verZig').onclick = () => { st.zig = !st.zig; store.set('zig', st.zig); pintarAnalisis(); };
 
   // ---------- carga
@@ -901,6 +964,7 @@
     try { (await json('data/scan.json')).valores.forEach(x => { st.scan[x.symbol] = x; }); } catch (e) {}
     window.__wyk = { st, zigzag, tendencia, chart };   // para pruebas
     await cargar(pedido);
+    aplicarVolumen();
   }
   iniciar();
 })();
