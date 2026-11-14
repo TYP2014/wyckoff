@@ -114,28 +114,6 @@ def fusionar_60m(symbol: str, nuevas: list) -> list:
     return [por_t[t] for t in sorted(por_t)]
 
 
-def completar_con_60m(diario: pd.DataFrame, h60: pd.DataFrame) -> tuple:
-    """Yahoo a veces publica tarde la vela diaria de algunos mercados (p. ej. Madrid: falta la sesión
-    del día aunque las barras de 60 min ya están). Las sesiones que falten se construyen con las de 60 min
-    y se marcan como provisionales; en la siguiente actualización las sustituye la vela diaria oficial."""
-    if h60 is None or not len(h60):
-        return diario, []
-    ultimo = diario.index[-1]
-    extra = h60[h60.index.normalize() > ultimo]
-    if not len(extra):
-        return diario, []
-    agg = {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
-    dias = extra.groupby(extra.index.normalize()).agg(agg).dropna(subset=["Open"])
-    # el volumen de 60 min no incluye subastas ni bloques: se escala con la relación de los últimos días
-    v60 = h60["Volume"].groupby(h60.index.normalize()).sum()
-    comunes = [d for d in diario.index[-25:] if d in v60.index and v60[d] > 0]
-    if comunes:
-        rel = (diario.loc[comunes, "Volume"] / v60[comunes]).median()
-        if rel and rel > 0:
-            dias["Volume"] = (dias["Volume"] * rel).round()
-    return pd.concat([diario, dias]).sort_index(), [d.strftime("%Y-%m-%d") for d in dias.index]
-
-
 def actualizar(symbol: str) -> None:
     diario = limpiar(sin_zona(PROVEEDOR(symbol, "1d")))
     if len(diario) < 50:
@@ -147,9 +125,10 @@ def actualizar(symbol: str) -> None:
     except Exception as e:  # sin 60m no se pierde el resto
         print(f"AVISO {symbol}: 60m no disponible ({e})", file=sys.stderr)
         h60 = None
-    diario, provisionales = completar_con_60m(diario, h60)
-    if provisionales:
-        print(f"AVISO {symbol}: sesiones diarias construidas con 60 min (provisionales): {', '.join(provisionales)}",
+    # Sin inventar datos: si Yahoo aún no ha publicado la vela diaria de la última sesión (pasa con Madrid),
+    # se avisa y se espera a la siguiente actualización (hay una segunda pasada por la mañana).
+    if h60 is not None and len(h60) and h60.index.normalize().max() > diario.index[-1]:
+        print(f"AVISO {symbol}: falta la vela diaria del {h60.index.normalize().max().date()} (Yahoo aún no la ha publicado)",
               file=sys.stderr)
 
     guardar(symbol, "1d", a_barras(diario, False))
