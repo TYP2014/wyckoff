@@ -58,6 +58,16 @@
   </div>
 </header>
 <main>
+  <h2>Posibles entradas: compra tras corrección <small id="nEnt"></small></h2>
+  <p class="exp">Tendencia alcista en semanal y diario; el precio corrige entre el 38,2 % y el 70 % del último impulso <b>sin volumen</b> (el impulso sí lo tuvo) y deja de hacer mínimos («se queda sin presión bajista»). Señales de hoy y de las 4 sesiones anteriores que siguen vivas.</p>
+  <div id="ent"></div>
+  <p class="exp" style="margin-top:8px"><b>Plan por operación:</b> entrar con riesgo fijo (p. ej. 1 % del capital: nº de acciones = 1 % del capital ÷ (entrada − stop)); vender la mitad en el objetivo 1; con la otra mitad, stop a precio de entrada al ganar 1 vez el riesgo y luego stop bajo el mínimo de las 10 últimas velas. <b>Prueba histórica</b> (79 valores, 2016-2026, 299 señales): gana el 35 % de las veces con una ganancia media de 2,6 veces el riesgo y pierde el 65 % con una pérdida media de 0,85 → resultado medio +0,35 veces el riesgo por operación; hubo rachas de hasta 11 pérdidas seguidas.</p>
+
+  <h2>Vigilar: corrigiendo dentro de la tendencia <small id="nVig"></small></h2>
+  <p class="exp">Semanal y diario alcistas, retroceso actual entre el 30 % y el 75 % del último impulso. Todavía no dan entrada; «volumen seco» = la corrección va con menos volumen que el impulso y que la media.</p>
+  <div id="vig"></div>
+
+  <details style="margin-top:26px"><summary style="cursor:pointer;font-weight:600">Análisis Wyckoff completo (rangos, eventos, soportes)</summary>
   <h2>Candidatas <small id="nCand"></small></h2>
   <p class="exp">Tendencia mayor alcista (mensual y semanal), sin señales de distribución y con spring, test, señal de fortaleza o apoyo reciente, o bien llegada a soporte dentro de un rango o de la zona Fibonacci.</p>
   <div class="rejilla" id="cand"></div>
@@ -73,7 +83,8 @@
   <h2>Descartadas por señales de distribución <small id="nDes"></small></h2>
   <div id="desc"></div>
 
-  <footer>Criterios estándar de Wyckoff, versión inicial pendiente de ajustar. Herramienta personal de apoyo a la decisión: no ejecuta órdenes ni es asesoramiento financiero.</footer>
+  </details>
+  <footer>Entradas: criterio de los cursos (FHI «entrada N2», Paco Gómez, Valdecantos), detalle en scripts/entradas.py. Herramienta personal de apoyo a la decisión: no ejecuta órdenes ni es asesoramiento financiero.</footer>
 </main>
 <script>
 (() => {
@@ -104,8 +115,36 @@
     <td><span class="${cls(x.tendM)}">${cap(x.tendM)}</span> / <span class="${cls(x.tendS)}">${cap(x.tendS)}</span></td></tr>`;
   const tabla = (filas, col) => filas.length ? `<table><tr><th>Valor</th><th>Cierre</th><th>${col}</th><th>Mensual / semanal</th></tr>${filas.join('')}</table>` : '<div class="vacio">Ninguno hoy</div>';
 
+  const pc = (a, b) => `${b >= a ? '+' : ''}${nf((b / a - 1) * 100)} %`;
+  function tablaEntradas(L) {
+    if (!L.length) return '<div class="vacio">Ninguna señal. Es normal: salen pocas (en la prueba histórica, una cada 8 sesiones de media con estos 79 valores).</div>';
+    return `<table><tr><th>Valor</th><th>Señal</th><th>Corrección</th><th>Volumen</th><th>Entrada</th><th>Stop</th><th>Objetivo 1</th><th>Objetivo 2</th><th>Beneficio/riesgo</th><th></th></tr>` +
+      L.map(x => { const e = x.entrada; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
+      <td class="n">${e.hace ? `hace ${e.hace} ses.` : '<b class="up">HOY</b>'}<br><span style="color:var(--dim);font-size:12px">${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</span></td>
+      <td class="n">${nf(e.retr)} % de ${nf(e.origen)} → ${nf(e.techo)}<br><span style="color:var(--dim);font-size:12px">mínimo ${nf(e.minimo)}</span></td>
+      <td class="n">impulso ${nf(e.vol_imp)}×<br>corrección ${nf(e.vol_cor)}×</td>
+      <td class="n"><b>${nf(e.entrada)}</b>${e.hace ? `<br><span style="font-size:12px">hoy ${nf(x.cierre)}</span>` : ''}</td>
+      <td class="n down">${nf(e.stop)}<br><span style="font-size:12px">−${nf(e.riesgo_pct)} %</span></td>
+      <td class="n up">${nf(e.obj1)}<br><span style="font-size:12px">${pc(e.entrada, e.obj1)}</span></td>
+      <td class="n up">${nf(e.obj2)}<br><span style="font-size:12px">${pc(e.entrada, e.obj2)}</span></td>
+      <td class="n">${nf(e.rr1)} / <b>${nf(e.rr2)}</b></td>
+      <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
+  }
+  function tablaVigilar(L) {
+    if (!L.length) return '<div class="vacio">Ninguno</div>';
+    return `<table><tr><th>Valor</th><th>Cierre</th><th>Impulso</th><th>Retroceso</th><th>Zona 38,2-61,8 %</th><th>Volumen corrección</th></tr>` +
+      L.map(x => { const g = x.vigilar; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
+      <td class="n">${nf(x.cierre)}</td><td class="n">${nf(g.origen)} → ${nf(g.techo)}</td>
+      <td class="n">${nf(g.retr)} %<br><span style="color:var(--dim);font-size:12px">mínimo ${nf(g.minimo)}</span></td>
+      <td class="n">${nf(g.z618)} – ${nf(g.z382)}</td>
+      <td class="n">${g.vol_cor == null ? '—' : nf(g.vol_cor) + '× la media'}<br>${g.seca ? '<span class="up">volumen seco</span>' : '<span class="flat">con volumen</span>'}</td></tr>`; }).join('') + '</table>';
+  }
   function pintar() {
     const D = datos.filter(x => mercado === 'Todos' || (x.indices || []).includes(mercado));
+    const ent = D.filter(x => x.entrada).sort((a, b) => a.entrada.hace - b.entrada.hace || b.entrada.calidad - a.entrada.calidad);
+    const vig = D.filter(x => x.vigilar).sort((a, b) => (b.vigilar.seca - a.vigilar.seca) || Math.abs(a.vigilar.retr - 50) - Math.abs(b.vigilar.retr - 50));
+    $('nEnt').textContent = `(${ent.length})`; $('nVig').textContent = `(${vig.length})`;
+    $('ent').innerHTML = tablaEntradas(ent); $('vig').innerHTML = tablaVigilar(vig);
     const cand = D.filter(x => x.candidata), desc = D.filter(x => x.descartada);
     const seg = D.filter(x => !x.candidata && !x.descartada && x.puntos >= 5);
     const avi = D.filter(x => x.avisos.length);
