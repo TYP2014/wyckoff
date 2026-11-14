@@ -129,6 +129,8 @@
       <button id="t_rect" title="Rectángulo: arrastra de una esquina a la opuesta">Rectángulo</button>
       <button id="t_elipse" title="Elipse o círculo: arrastra de un extremo al otro">Elipse</button>
       <button id="t_fib" title="Fibonacci: arrastra del INICIO al FINAL del tramo (o clic y clic). Cerca del máximo o mínimo de una vela se ajusta a él">Fibonacci</button>
+      <button id="t_fsube" title="Flecha hacia arriba: un clic donde quieras, sobre el precio o sobre el volumen (la punta queda en el clic)">▲</button>
+      <button id="t_fbaja" title="Flecha hacia abajo: un clic donde quieras, sobre el precio o sobre el volumen (la punta queda en el clic)">▼</button>
       <span id="colores"></span>
       <button id="iman" title="Imán: ajusta los puntos al máximo o mínimo de la vela">Imán</button>
       <button id="prolongar" title="Prolonga hacia la derecha la línea seleccionada" disabled>Prolongar</button>
@@ -554,6 +556,7 @@
   // ---------- dibujos del usuario: línea, horizontal, rectángulo y elipse
   // Se guardan por valor, anclados a fecha y precio, y se ven en todas las temporalidades.
   const claveDib = () => `dib:${st.sym}`;
+  const FLECHAS = ['fsube', 'fbaja'];
   let dibs = [];
   function leerDibs() {
     let D = store.get(claveDib(), null);
@@ -615,6 +618,11 @@
     if (d.tipo === 'horiz') {
       ctx.beginPath(); ctx.moveTo(0, g.y); ctx.lineTo(w, g.y); ctx.stroke();
       ctx.font = '600 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(d.pn ? nvol(Math.round(d.p)) : nf(d.p), w - 6, g.y - 4);
+    } else if (FLECHAS.includes(d.tipo)) {         // punta en el punto marcado; cuerpo debajo (▲) o encima (▼)
+      const s = d.tipo === 'fsube' ? 1 : -1, x = g.xa, y = g.ya;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 7, y + s * 10); ctx.lineTo(x - 2.5, y + s * 10); ctx.lineTo(x - 2.5, y + s * 22);
+      ctx.lineTo(x + 2.5, y + s * 22); ctx.lineTo(x + 2.5, y + s * 10); ctx.lineTo(x + 7, y + s * 10); ctx.closePath(); ctx.fill();
+      if (sel) { ctx.lineWidth = 1; ctx.setLineDash([3, 2]); ctx.strokeRect(x - 10, Math.min(y, y + s * 22) - 3, 20, 28); }
     } else if (d.tipo === 'linea') {
       const [x1, y1, x2, y2] = finLinea(d, g, w);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
@@ -644,7 +652,7 @@
       else ctx.ellipse((g.xa + g.xb) / 2, (g.ya + g.yb) / 2, Math.max(1, Math.abs(g.xb - g.xa) / 2), Math.max(1, Math.abs(g.yb - g.ya) / 2), 0, 0, 2 * Math.PI);
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
     }
-    if (sel && d.tipo !== 'horiz') {             // tiradores en los dos extremos
+    if (sel && d.tipo !== 'horiz' && !FLECHAS.includes(d.tipo)) {             // tiradores en los dos extremos
       ctx.lineWidth = 2; ctx.fillStyle = '#fff';
       [[g.xa, g.ya], [g.xb, g.yb]].concat(d.tipo === 'canal' ? [[g.xc, g.yc]] : []).forEach(([x, y]) => { ctx.beginPath(); ctx.rect(x - 5, y - 5, 10, 10); ctx.fill(); ctx.stroke(); });
     }
@@ -699,15 +707,16 @@
   // ¿qué dibujo hay bajo el cursor? Primero los tiradores del seleccionado.
   function tocar(x, y, pn) {
     const T = 7, w = chart.timeScale().width();
-    const sel = dibs[st.sel], gs = sel && sel.tipo !== 'horiz' && !sel.pn === !pn && geo(sel);
+    const sel = dibs[st.sel], gs = sel && sel.tipo !== 'horiz' && !FLECHAS.includes(sel.tipo) && (st.volInt || !sel.pn === !pn) && geo(sel);
     if (gs) {
       if (Math.hypot(x - gs.xa, y - gs.ya) <= 9) return { k: st.sel, parte: 'a' };
       if (Math.hypot(x - gs.xb, y - gs.yb) <= 9) return { k: st.sel, parte: 'b' };
       if (sel.tipo === 'canal' && Math.hypot(x - gs.xc, y - gs.yc) <= 9) return { k: st.sel, parte: 'c' };
     }
     for (let k = dibs.length - 1; k >= 0; k--) {
-      const d = dibs[k]; if (!d.pn !== !pn) continue; const g = geo(d); if (!g) continue; let ok = false;
+      const d = dibs[k]; if (!st.volInt && !d.pn !== !pn) continue; const g = geo(d); if (!g) continue; let ok = false;   // con el volumen integrado todo está en el mismo panel
       if (d.tipo === 'horiz') ok = Math.abs(y - g.y) <= T;
+      else if (FLECHAS.includes(d.tipo)) { const s = d.tipo === 'fsube' ? 1 : -1; ok = Math.abs(x - g.xa) <= 9 && (y - g.ya) * s >= -4 && (y - g.ya) * s <= 26; }
       else if (d.tipo === 'linea' || d.tipo === 'canal') {
         const cerca = gg => { const [x1, y1, x2, y2] = finLinea(d, gg, w), dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
           const u = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0;
@@ -732,7 +741,7 @@
     return null;
   }
 
-  const NOMBRE = { canal: 'Canal', linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse', fib: 'Fibonacci' };
+  const NOMBRE = { fsube: 'Flecha ▲', fbaja: 'Flecha ▼', canal: 'Canal', linea: 'Línea', horiz: 'Horizontal', rect: 'Rectángulo', elipse: 'Elipse', fib: 'Fibonacci' };
   function pintarDibujos() {
     if (st.sel >= dibs.length) st.sel = -1;
     const sel = dibs[st.sel];
@@ -741,7 +750,7 @@
     $('prolongar').classList.toggle('on', !!(sel && sel.ext));
     $('dibujos').innerHTML = dibs.length ? dibs.map((d, k) =>
       `<div class="nivel fila ${k === st.sel ? 'sel' : ''}" data-k="${k}"><i style="background:${d.c}"></i><span>${NOMBRE[d.tipo]}
-       <small>${d.pn ? 'en volumen' : d.tipo === 'horiz' ? nf(d.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
+       <small>${d.pn ? 'en volumen' : d.tipo === 'horiz' ? nf(d.p) : FLECHAS.includes(d.tipo) ? nf(d.a.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
       : '<div class="vacio">Ninguno todavía</div>';
     tablaFib();
     repintar();
@@ -816,7 +825,7 @@
   $('info').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') cerrarInfo(); });
 
   // ---------- ratón sobre el gráfico: dibujar, seleccionar, mover, cambiar de tamaño
-  const FORMAS = ['linea', 'canal', 'horiz', 'rect', 'elipse', 'fib'];
+  const FORMAS = ['linea', 'canal', 'horiz', 'rect', 'elipse', 'fib', 'fsube', 'fbaja'];
   let arr = null;                                // gesto en curso
   function aviso(txt) { $('aviso').style.display = txt ? 'block' : 'none'; $('aviso').textContent = txt || ''; }
   function setModo(m) {
@@ -824,12 +833,12 @@
     chart.applyOptions({ handleScroll: !m, handleScale: !m });      // mientras se dibuja, el gráfico no se mueve
     FORMAS.forEach(t => $('t_' + t).classList.toggle('armado', m === t));
     aviso(m === 'fib' ? 'Fibonacci: arrastra del INICIO al FINAL del tramo (o clic en el inicio y clic en el final). Esc cancela'
-      : m === 'horiz' ? 'Haz clic a la altura del precio' : FORMAS.includes(m) ? 'Arrastra de un punto a otro (o clic y clic). Esc cancela' : '');
+      : m === 'horiz' ? 'Haz clic a la altura del precio' : FLECHAS.includes(m) ? 'Haz clic donde quieres la flecha, en el precio o en el volumen. Esc cancela' : FORMAS.includes(m) ? 'Arrastra de un punto a otro (o clic y clic). Esc cancela' : '');
     repintar();
   }
   // posición del cursor en el gráfico: vela (puede ser más allá de la última) y precio
   // pn: 0 = precio, 1 = volumen. Si se pasa `fijo`, el punto se calcula dentro de ese panel (un dibujo no cambia de panel).
-  function pos(e, fijo) {
+  function pos(e, fijo, flecha) {
     const paneles = chart.panes(), b = barras(); let pn = fijo, r = null;
     if (pn == null) {
       for (let k = 0; k < Math.min(2, paneles.length); k++) {
@@ -837,9 +846,10 @@
         if (e.clientY >= q.top && e.clientY <= q.bottom) { pn = k; r = q; }
       }
       if (pn == null) return null;
-    } else { if (!paneles[pn]) return null; r = paneles[pn].getHTMLElement().getBoundingClientRect(); }
+    } else { const kp = pn === 1 && st.volInt ? 0 : pn; if (!paneles[kp]) return null; r = paneles[kp].getHTMLElement().getBoundingClientRect(); }
     const x = e.clientX - r.left, w = chart.timeScale().width(); let y = e.clientY - r.top;
     if (fijo == null) { if (x < 0 || x > w) return null; } else y = Math.max(0, Math.min(r.height, y));
+    if (flecha && fijo == null && st.volInt && pn === 0 && y > r.height * (1 - 0.6 * st.volTam)) pn = 1;   // flecha en la franja del volumen integrado
     const lg = chart.timeScale().coordinateToLogical(Math.max(0, Math.min(w, x))); let p = (pn ? vol : velas).coordinateToPrice(y);
     if (lg == null || p == null || !b.length) return null;
     const i = Math.max(0, Math.round(lg)), v = b[Math.min(i, b.length - 1)];
@@ -875,7 +885,7 @@
 
   $('graf').addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    const m = pos(e); if (!m) return;
+    const m = pos(e, undefined, FLECHAS.includes(st.modo)); if (!m) return;
     if (st.modo) { if ((st.puntoA && st.puntoA.pn !== m.pn) || (st.modo === 'fib' && m.pn)) return; arr = { tipo: 'crear', ini: m }; return; }
     const h = tocar(m.x, m.y, m.pn);
     if (!h) { arr = { tipo: 'vacio', ini: m }; return; }
@@ -906,7 +916,7 @@
       }
       repintar(); return;
     }
-    if (FORMAS.includes(st.modo) && st.modo !== 'horiz') {
+    if (FORMAS.includes(st.modo) && st.modo !== 'horiz' && !FLECHAS.includes(st.modo)) {
       const a = st.puntoA || (arr && arr.tipo === 'crear' && arr.ini);
       if (a && m) { st.previa = nueva(a, m, e.shiftKey && st.modo === 'linea'); repintar(); }
       return;
@@ -925,6 +935,7 @@
       return;
     }
     if (!m) return;
+    if (FLECHAS.includes(st.modo)) { const a = dePos(m.i, m.p); return terminar(Object.assign({ tipo: st.modo, a, b: Object.assign({}, a), tf: st.tf, c: st.color }, m.pn ? { pn: 1 } : {})); }
     if (st.modo === 'horiz') return terminar(Object.assign({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color }, m.pn ? { pn: 1 } : {}));
     const sh = e.shiftKey && st.modo === 'linea';
     if (mov > 6) return terminar(nueva(g.ini, m, sh));                     // arrastrando
