@@ -66,6 +66,7 @@
       <div><label>Objetivo (venta)</label><input id="fTp" inputmode="decimal" placeholder="opcional"></div>
       <div><label>Fecha de la orden</label><input id="fFecha" type="date"></div>
       <div><label>Nota</label><input id="fNota" placeholder="motivo de la entrada"></div>
+      <div><label><input type="checkbox" id="fPlan" checked style="width:auto;margin-right:6px">Plan de gestión</label><span class="dim" style="font-size:12px">a +1,5 R el stop pasa a ganancia (+0,25 R) y después sigue al mínimo de 20 sesiones</span></div>
       <div><button class="pri" id="fCrear">Dejar orden</button></div>
     </div>
     <p class="ayuda" id="fInfo"></p>
@@ -146,9 +147,10 @@
     else if (sl && ref && sl >= ref) err = 'El stop loss tiene que estar por debajo del precio de compra.';
     else if (tp && ref && tp <= ref) err = 'El objetivo tiene que estar por encima del precio de compra.';
     else if (ref && importe < ref) err = 'El importe no llega para comprar un solo título.';
+    else if ($('fPlan').checked && !sl) err = 'El plan de gestión necesita un stop loss inicial.';
     $('fError').textContent = err; if (err) return;
     const L = C.leer();
-    L.push({ id: Date.now().toString(36), sym, tipo, precio: tipo === 'mercado' ? null : precio, importe, sl, tp, fecha, nota: $('fNota').value.trim(), creada: C.hoy() });
+    L.push({ id: Date.now().toString(36), sym, tipo, precio: tipo === 'mercado' ? null : precio, importe, sl, tp, fecha, nota: $('fNota').value.trim(), creada: C.hoy(), plan: $('fPlan').checked && !!sl });
     C.guardar(L); ['fPrecio', 'fSl', 'fTp', 'fNota'].forEach(k => { $(k).value = ''; });
     $('fFecha').value = C.hoy();          // la fecha vuelve a hoy para no dejar la siguiente orden en el pasado sin querer
     pintar();
@@ -174,7 +176,7 @@
       abi.map(({ o, r, d }) => `<tr><td>${enlace(o.sym)}</td><td>${nf(r.entrada.precio)}<br><span class="dim">${f(r.entrada.fecha)} · ${TIPO[o.tipo]}</span></td>
         <td>${r.titulos}</td><td>${nf(r.invertido, 0)} ${d}</td><td>${nf(r.ultimo)}<br><span class="dim">${f(r.fechaUltimo)}</span></td>
         <td>${signo(r.pyg, ' ' + d)}<br>${signo(r.pct, ' %')}</td>
-        <td><input data-sl="${o.id}" value="${r.sl ? nf(r.sl) : ''}" placeholder="—"></td><td><input data-tp="${o.id}" value="${r.tp ? nf(r.tp) : ''}" placeholder="—"></td>
+        <td><input data-sl="${o.id}" value="${r.sl ? nf(r.sl) : ''}" placeholder="—">${o.plan ? `<br><span class="dim">${r.planActivo ? `stop del plan: <b class="up">${nf(r.slPlan)}</b>` : `plan: a ${nf(r.entrada.precio + 1.5 * (r.entrada.precio - o.sl))} sube a ganancia`}</span>` : ''}</td><td><input data-tp="${o.id}" value="${r.tp ? nf(r.tp) : ''}" placeholder="—"></td>
         <td>${r.riesgo != null ? nf(r.riesgo, 0) + ' ' + d : '—'}</td><td class="dim">${o.nota || ''}</td>
         <td><button class="mini" data-a="niveles" data-id="${o.id}">Guardar stop / objetivo</button> <button class="mini" data-a="vender" data-id="${o.id}">${o.venta ? 'Venta pendiente' : 'Vender a mercado'}</button></td></tr>`), 'Ninguna');
 
@@ -230,6 +232,8 @@
       .map(x => `<option value="${x.symbol}">${x.nombre} (${x.symbol})</option>`).join('')}</optgroup>`).join('');
     const q = new URLSearchParams(location.search);
     if (q.get('s') && info[q.get('s')]) $('fSym').value = q.get('s');
+    if (q.get('sl')) $('fSl').value = q.get('sl').replace('.', ',');
+    if (q.get('nota')) $('fNota').value = q.get('nota');
     $('fFecha').value = C.hoy();
     await infoForm(); await pintar();
   })();

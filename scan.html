@@ -61,7 +61,7 @@
   <h2>Posibles entradas: compra tras corrección <small id="nEnt"></small></h2>
   <p class="exp">Tendencia alcista en semanal y diario; el precio corrige entre el 38,2 % y el 70 % del último impulso <b>sin volumen</b> (el impulso sí lo tuvo) y deja de hacer mínimos («se queda sin presión bajista»). Señales de hoy y de las 4 sesiones anteriores que siguen vivas.</p>
   <div id="ent"></div>
-  <p class="exp" style="margin-top:8px"><b>Plan por operación:</b> entrar con riesgo fijo (p. ej. 1 % del capital: nº de acciones = 1 % del capital ÷ (entrada − stop)); vender la mitad en el objetivo 1; con la otra mitad, stop a precio de entrada al ganar 1 vez el riesgo y luego stop bajo el mínimo de las 10 últimas velas. <b>Prueba histórica</b> (79 valores, 2016-2026, 299 señales): gana el 35 % de las veces con una ganancia media de 2,6 veces el riesgo y pierde el 65 % con una pérdida media de 0,85 → resultado medio +0,35 veces el riesgo por operación; hubo rachas de hasta 11 pérdidas seguidas.</p>
+  <p class="exp" style="margin-top:8px"><b>Plan por operación:</b> entrar con riesgo fijo (p. ej. 1 % del capital: nº de acciones = 1 % del capital ÷ (entrada − stop)); sin objetivo fijo: cuando gana 1,5 veces el riesgo, el stop sube a ganancia (+0,25 veces el riesgo) y desde ahí sigue al mínimo de las 20 últimas sesiones (sale cuando pierde la inercia). El botón «Compra ficticia» lo deja preparado. <b>Prueba histórica</b> (79 valores, 2016-2026, 282 señales, con huecos de apertura incluidos): gana el 44 % de las operaciones (ganancia media 2,5 veces el riesgo) y pierde el 56 % (pérdida media 1,2 veces el riesgo, por los huecos); resultado medio +0,5 veces el riesgo por operación, +0,2 sin contar las 3 mejores; duración media 21 sesiones; racha máxima de 8 pérdidas seguidas.</p>
 
   <h2>Vigilar: corrigiendo dentro de la tendencia <small id="nVig"></small></h2>
   <p class="exp">Semanal y diario alcistas, retroceso actual entre el 30 % y el 75 % del último impulso. Todavía no dan entrada; «volumen seco» = la corrección va con menos volumen que el impulso y que la media.</p>
@@ -128,7 +128,7 @@
       <td class="n up">${nf(e.obj1)}<br><span style="font-size:12px">${pc(e.entrada, e.obj1)}</span></td>
       <td class="n up">${nf(e.obj2)}<br><span style="font-size:12px">${pc(e.entrada, e.obj2)}</span></td>
       <td class="n">${nf(e.rr1)} / <b>${nf(e.rr2)}</b></td>
-      <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
+      <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}&sl=${e.stop}&nota=${encodeURIComponent(`Señal ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}: corrección ${nf(e.retr)} %, stop ${nf(e.stop)}, obj. 1 ${nf(e.obj1)}`)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
   }
   function tablaVigilar(L) {
     if (!L.length) return '<div class="vacio">Ninguno</div>';
