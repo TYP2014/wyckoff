@@ -114,6 +114,7 @@ def vigilar(o, h, l, c, v, tend_semanal, p=None):
     return {"techo": round(e["pH"], 2), "origen": round(e["pL0"], 2), "minimo": round(e["pLc"], 2),
             "retr": round(e["retr"] * 100, 1), "fallo": e["fallo"],
             "vol_cor": round(e["vcor"] / e["vmed"], 2) if e["vmed"] else None,
+            "vol_imp": round(e["vimp"] / e["vmed"], 2) if e["vmed"] else None,
             "seca": bool(e["vmed"] and e["vcor"] < e["vimp"] and e["vcor"] < e["vmed"]),
             "z382": round(e["pH"] - 0.382 * e["imp"], 2), "z618": round(e["pH"] - 0.618 * e["imp"], 2)}
 
