@@ -138,11 +138,7 @@
       <span class="et">Volumen</span>
       <button id="volInt" title="Volumen integrado en el gráfico de precio (como Visual Chart) o en panel aparte">Integrado</button>
       <button id="lectura" title="Flechas sobre el volumen como en las tutorías de Paco Gómez: negro compras, rojo ventas, azul sin demanda, verde sin oferta, naranja absorción">Lectura</button>
-      <select id="volTam" title="Altura del volumen integrado">
-        <option value="0.15">Pequeño</option>
-        <option value="0.25">Medio</option>
-        <option value="0.38">Grande</option>
-      </select>
+      <input id="volTam" type="range" min="8" max="70" step="1" title="Altura del volumen integrado: desliza para subirlo o bajarlo" style="width:110px;vertical-align:middle">
     </div>
     <div class="grupo">
       <span class="et">Soportes / resistencias</span>
@@ -335,7 +331,7 @@
       velas.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
     }
     const b = barras(); vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: colVol() })));
-    $('volInt').classList.toggle('on', st.volInt); $('volTam').disabled = !st.volInt; $('volTam').value = String(st.volTam);
+    $('volInt').classList.toggle('on', st.volInt); $('volTam').disabled = !st.volInt; $('volTam').value = String(Math.round(st.volTam * 100));
     ajustarPaneles(); repintar && repintar();
   }
 
@@ -900,7 +896,7 @@
   $('srAuto').onclick = () => { st.srAuto = !st.srAuto; store.set('srAuto', st.srAuto); pintarAutos(); };
   $('volInt').onclick = () => { st.volInt = !st.volInt; store.set('volInt', st.volInt); aplicarVolumen(); };
   $('lectura').onclick = () => { st.lectura = !st.lectura; store.set('lectura', st.lectura); pintarLectura(); };
-  $('volTam').onchange = e => { st.volTam = +e.target.value; store.set('volTam', st.volTam); aplicarVolumen(); };
+  $('volTam').oninput = e => { st.volTam = +e.target.value / 100; store.set('volTam', st.volTam); aplicarVolumen(); };
   $('verZig').onclick = () => { st.zig = !st.zig; store.set('zig', st.zig); pintarAnalisis(); };
 
   // ---------- carga
