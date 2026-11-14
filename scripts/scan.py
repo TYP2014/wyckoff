@@ -18,6 +18,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import entradas  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 CONFIG = ROOT / "config" / "tickers.json"
@@ -343,6 +346,22 @@ def analizar(info):
     else:
         r["fase"] = "Rango en desarrollo"
 
+    # compra tras corrección a favor de la tendencia (criterio de los cursos, ver entradas.py)
+    W = 400
+    ser = [d[k][-W:] for k in ("o", "h", "l", "c", "v")]
+    r["entrada"] = entradas.senal(*ser, r["tendS"])
+    if r["entrada"]:
+        r["entrada"]["fecha"], r["entrada"]["hace"] = d["t"][-1], 0
+    else:   # señal de las 4 sesiones anteriores que siga viva (precio entre el stop y el objetivo 1)
+        for back in range(1, 5):
+            sg = entradas.senal(*[x[:-back] for x in ser], r["tendS"])
+            if sg:
+                if sg["stop"] < cierre < sg["obj1"]:
+                    sg["fecha"], sg["hace"] = d["t"][-1 - back], back
+                    r["entrada"] = sg
+                break
+    r["vigilar"] = None if r["entrada"] else entradas.vigilar(*ser, r["tendS"])
+
     r["puntos"], r["motivos"], r["descartada"] = puntos, motivos, bool(dist)
     r["candidata"] = bool(mayor and not dist and puntos >= 6 and (reciente or ((en_fib or rango) and en_sop)))
     return r
@@ -363,6 +382,8 @@ def main():
     doc = {"generado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "valores": out}
     (DATA / "scan.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
     cand = [x["symbol"] for x in out if x["candidata"]]
+    ent = [x["symbol"] for x in out if x.get("entrada")]
+    print(f"Entradas tras corrección: {len(ent)} ({', '.join(ent)})")
     print(f"Scan: {len(out)} valores, {len(cand)} candidatas ({', '.join(cand)}), {errores} errores")
     return 1 if errores else 0
 
