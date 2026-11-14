@@ -10,12 +10,12 @@ presión bajista», Valdecantos «test con poco volumen»):
   4. Sin presión bajista: desde el mínimo de la corrección hay al menos 3 velas sin nuevo mínimo
      (barras de fallo) y como mucho 12.
   5. Activación: la vela de hoy cierra alcista y por encima del máximo de ayer (intención).
-  6. Stop bajo el mínimo de la corrección; objetivo 1 = máximo del impulso; objetivo 2 =
+  6. Stop 0,5 ATR bajo el mínimo de la corrección; objetivo 1 = máximo del impulso; objetivo 2 =
      proyección del 61,8 % del impulso. Se exige beneficio/riesgo >= 2 hasta el objetivo 2.
 Herramienta de apoyo a la decisión: no ejecuta órdenes ni es asesoramiento financiero.
 """
 
-P = {"mult": 3.0, "rmin": 0.382, "rmax": 0.70, "fmin": 1, "fmax": 5, "act": "none", "vol": True, "rr": 2.0, "sem": True, "sa": 0.25}
+P = {"mult": 3.0, "rmin": 0.382, "rmax": 0.70, "fmin": 1, "fmax": 5, "act": "none", "vol": True, "rr": 2.0, "sem": True, "sa": 0.5}
 
 
 def _atr(h, l, c, n=14):
