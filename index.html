@@ -29,15 +29,25 @@
   #nombre { color: var(--dim); font-size: 13px; }
   #grupos { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; order: -1; }
   #grupos button { padding: 3px 10px; font-size: 13px; } #grupos small { opacity: .7; margin-left: 3px; }
-  #colores { display: inline-flex; gap: 4px; margin-left: 4px; }
-  #colores i { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-  #colores i.on { border-color: #1c2330; }
+  #colores, #relleno { display: inline-flex; gap: 4px; margin-left: 2px; }
+  #colores i, #relleno i { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  #relleno i { border-radius: 4px; }
+  #colores i.on, #relleno i.on { border-color: #1c2330; }
   .nivel i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .nivel small { color: var(--dim); }
   .nivel.fila { cursor: pointer; border-radius: 4px; padding: 2px 4px; } .nivel.fila.sel { background: #e6eefc; }
   button:disabled { opacity: .4; cursor: default; }
   #graf.sobre, #graf.sobre * { cursor: pointer !important; }
   #graf.mano, #graf.mano * { cursor: grabbing !important; }
+  #graf.rs-nwse, #graf.rs-nwse * { cursor: nwse-resize !important; }
+  #graf.rs-nesw, #graf.rs-nesw * { cursor: nesw-resize !important; }
+  #graf.rs-ns, #graf.rs-ns * { cursor: ns-resize !important; }
+  #graf.rs-ew, #graf.rs-ew * { cursor: ew-resize !important; }
+  .trazo button { padding: 3px 6px; line-height: 0; }
+  .trazo svg { width: 26px; height: 12px; }
+  #relleno i.sin { background: #fff !important; position: relative; border-color: #9aa7b8; }
+  #relleno i.sin::after { content: ''; position: absolute; left: 1px; right: 1px; top: 8px; border-top: 2px solid #e0443e; transform: rotate(-45deg); }
+  #relleno i.on.sin { border-color: #1c2330; }
   #precio { font-size: 17px; font-variant-numeric: tabular-nums; }
   #precio .var { font-size: 13px; margin-left: 6px; }
   #actualizado { color: var(--dim); font-size: 12px; margin-left: auto; }
@@ -112,6 +122,9 @@
 
   <div class="barra">
     <div class="grupo" id="tfs">
+      <button data-tf="5m">5m</button>
+      <button data-tf="15m">15m</button>
+      <button data-tf="30m">30m</button>
       <button data-tf="60m">60m</button>
       <button data-tf="1d">D</button>
       <button data-tf="1wk">S</button>
@@ -131,15 +144,26 @@
       <button id="t_fib" title="Fibonacci: arrastra del INICIO al FINAL del tramo (o clic y clic). Cerca del máximo o mínimo de una vela se ajusta a él">Fibonacci</button>
       <button id="t_fsube" title="Flecha hacia arriba: un clic donde quieras, sobre el precio o sobre el volumen (la punta queda en el clic)">▲</button>
       <button id="t_fbaja" title="Flecha hacia abajo: un clic donde quieras, sobre el precio o sobre el volumen (la punta queda en el clic)">▼</button>
-      <span id="colores"></span>
       <button id="iman" title="Imán: ajusta los puntos al máximo o mínimo de la vela">Imán</button>
       <button id="prolongar" title="Prolonga hacia la derecha la línea seleccionada" disabled>Prolongar</button>
       <button id="borrar" title="Borra el dibujo seleccionado (tecla Supr)" disabled>Borrar</button>
     </div>
+    <div class="grupo trazo">
+      <span class="et">Contorno</span><span id="colores"></span>
+      <span class="et" style="margin-left:6px">Grosor</span>
+      <button data-g="1" title="Fino"><svg viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="1"/></svg></button>
+      <button data-g="2" title="Medio"><svg viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="2.5"/></svg></button>
+      <button data-g="4" title="Grueso"><svg viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="4.5"/></svg></button>
+      <span class="et" style="margin-left:6px">Línea</span>
+      <button data-e="s" title="Continua"><svg viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="2"/></svg></button>
+      <button data-e="p" title="De puntos"><svg viewBox="0 0 26 12"><line x1="2" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="0.1 5"/></svg></button>
+      <button data-e="g" title="De guiones (rayas y cortes)"><svg viewBox="0 0 26 12"><line x1="1" y1="6" x2="25" y2="6" stroke="#1c2330" stroke-width="2" stroke-dasharray="6 4"/></svg></button>
+      <span class="et" style="margin-left:6px" title="Color del interior de rectángulos, elipses y canales">Relleno</span><span id="relleno"></span>
+    </div>
     <div class="grupo">
       <span class="et">Volumen</span>
       <button id="volInt" title="Volumen integrado en el gráfico de precio (como Visual Chart) o en panel aparte">Integrado</button>
-      <button id="lectura" title="Flechas sobre el volumen como en las tutorías de Paco Gómez: negro compras, rojo ventas, azul sin demanda, verde sin oferta, naranja absorción">Lectura</button>
+      <button id="lectura" title="Solo las flechas importantes del volumen (Paco Gómez): negro compras y rojo ventas con volumen de 2 veces la media o más, naranja absorción; azul sin demanda y verde sin oferta solo junto a una resistencia o un soporte de 3 toques o más">Lectura</button>
       <input id="volTam" type="range" min="8" max="70" step="1" title="Altura del volumen integrado: desliza para subirlo o bajarlo" style="width:110px;vertical-align:middle">
     </div>
     <div class="grupo">
@@ -197,8 +221,9 @@
 (() => {
   'use strict';
   const LC = LightweightCharts;
-  const TFS = ['1mo', '1wk', '1d', '60m'];
-  const TF_NOMBRE = { '1mo': 'Mensual', '1wk': 'Semanal', '1d': 'Diario', '60m': '60 min' };
+  const TFS = ['1mo', '1wk', '1d', '60m', '30m', '15m', '5m'];
+  const TF_NOMBRE = { '1mo': 'Mensual', '1wk': 'Semanal', '1d': 'Diario', '60m': '60 min', '30m': '30 min', '15m': '15 min', '5m': '5 min' };
+  const INTRA = tf => /m$/.test(tf) && tf !== '1mo';
   const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
   const C = { up: '#12967e', down: '#e0443e', amber: '#c98500', dim: '#5f6b7a' };
   const $ = id => document.getElementById(id);
@@ -221,9 +246,11 @@
     lineasFib: [], lineasAuto: [], lineasCart: [], sel: -1, previa: null, iman: store.get('iman', false), scan: {}, wy: store.get('wy', true), marcasFib: [], autos: [], srAuto: store.get('srAuto', true), dist: store.get('dist', false), lineasDist: [],
     volInt: store.get('volInt', true), volTam: store.get('volTam', 0.25), lectura: store.get('lectura', true),
     lista: [], grupo: store.get('grupo', null), color: store.get('color', '#4c8dff'), carga: 0, vela: -1,
+    grosor: store.get('grosor', 2), estilo: store.get('estilo', 's'), relleno: store.get('relleno', null), alertas: [], lineasAle: [],
   };
-  const COLORES = ['#4c8dff', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd'];
-  const RANGO = { '60m': 0, '1d': 1, '1wk': 2, '1mo': 3 };
+  const COLORES = ['#2f6fe0', '#e0443e', '#12967e', '#c98500', '#1c2330', '#c678dd', '#7f8c9d'];
+  const RANGO = { '5m': -3, '15m': -2, '30m': -1, '60m': 0, '1d': 1, '1wk': 2, '1mo': 3 };
+  const SOP = '#2f6fe0', RES = '#e0443e';        // soportes en azul, resistencias en rojo
   const ep = t => typeof t === 'number' ? t : Date.UTC(+t.slice(0, 4), +t.slice(5, 7) - 1, +t.slice(8, 10)) / 1000;
   const fecha = e => { const d = new Date(e * 1000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + String(d.getUTCFullYear()).slice(2); };
 
@@ -295,25 +322,40 @@
   }, 1);
   const marcas = LC.createSeriesMarkers(velas, []);
   const ajustarPaneles = () => { const p = chart.panes(); if (p.length > 1) { p[0].setStretchFactor(3); p[1].setStretchFactor(1); } };
-  // Lectura del volumen (leyenda de Paco Gómez), comparando cada vela con las 20 anteriores:
-  //  compras (negro): sube, volumen >= 1,5x media, rango amplio y cierre en el tercio alto
-  //  ventas (rojo): baja, volumen >= 1,5x media, rango amplio y cierre en el tercio bajo
-  //  absorción (naranja): volumen >= 1,8x media con rango estrecho (esfuerzo sin resultado)
-  //  sin demanda (azul): sube con rango estrecho y menos volumen que las dos velas anteriores
-  //  sin oferta (verde): baja con rango estrecho y menos volumen que las dos velas anteriores
+  // Lectura del volumen (leyenda de Paco Gómez), comparando cada vela con las 20 anteriores. Solo las importantes:
+  //  compras (negro): sube, volumen >= 2x media, rango amplio y cierre en el tercio alto
+  //  ventas (rojo): baja, volumen >= 2x media, rango amplio y cierre en el tercio bajo
+  //  absorción (naranja): volumen >= 2x media con rango estrecho (esfuerzo sin resultado)
+  //  sin demanda (azul): sube con rango estrecho y volumen seco, junto a una resistencia de 3 toques o más
+  //  sin oferta (verde): baja con rango estrecho y volumen seco, junto a un soporte de 3 toques o más
   const marcasVol = LC.createSeriesMarkers(vol, []);
   function lecturaVol(b) {
-    const M = [];
-    for (let i = 21; i < b.length; i++) {
-      let sv = 0, sr = 0; for (let k = i - 20; k < i; k++) { sv += b[k].volume; sr += b[k].high - b[k].low; }
-      const vm = sv / 20, rm = sr / 20, x = b[i], r = x.high - x.low, cp = r > 0 ? (x.close - x.low) / r : 0.5;
+    const M = [], A = atr(b), N = nivelesTodos(b).filter(x => x.n >= 3);
+    const cerca = (p, A_, sop) => N.some(x => x.sop === sop && Math.abs(x.p - p) <= 0.5 * A_);
+    // En intradía cada vela se compara con las 20 anteriores de su MISMA HORA (la apertura siempre lleva mucho volumen)
+    const intra = INTRA(st.tf), hist = {};
+    for (let i = 0; i < b.length; i++) {
+      const x = b[i], r = x.high - x.low, cp = r > 0 ? (x.close - x.low) / r : 0.5;
+      let vm, rm;
+      if (intra) {
+        const key = ep(x.time) % 86400, H = hist[key] || (hist[key] = []);
+        const ok = H.length >= 10; if (ok) { vm = H.reduce((s, q) => s + q[0], 0) / H.length; rm = H.reduce((s, q) => s + q[1], 0) / H.length; }
+        H.push([x.volume, r]); if (H.length > 20) H.shift();
+        if (!ok || i < 2) continue;
+      } else {
+        if (i < 21) continue;
+        let sv = 0, sr = 0; for (let k = i - 20; k < i; k++) { sv += b[k].volume; sr += b[k].high - b[k].low; }
+        vm = sv / 20; rm = sr / 20;
+      }
       const sube = x.close > b[i - 1].close, baja = x.close < b[i - 1].close;
       let t = null;
-      if (x.volume >= 1.8 * vm && r <= 0.8 * rm) t = ['#e8890c', 'Absorción'];
-      else if (sube && x.volume >= 1.5 * vm && r >= 1.2 * rm && cp >= 0.65) t = ['#1c2330', 'Compras'];
-      else if (baja && x.volume >= 1.5 * vm && r >= 1.2 * rm && cp <= 0.35) t = ['#e0443e', 'Ventas'];
-      else if (sube && r <= 0.8 * rm && x.volume < b[i - 1].volume && x.volume < b[i - 2].volume) t = ['#2f6fe0', 'Sin demanda'];
-      else if (baja && r <= 0.8 * rm && x.volume < b[i - 1].volume && x.volume < b[i - 2].volume) t = ['#12967e', 'Sin oferta'];
+      // Solo las importantes: volumen de 2 veces la media, o falta de demanda/oferta justo en un nivel de 3 toques o más
+      const seco = x.volume < 0.8 * vm && x.volume < b[i - 1].volume && x.volume < b[i - 2].volume;
+      if (x.volume >= 2 * vm && r <= 0.8 * rm) t = ['#e8890c', 'Absorción'];
+      else if (sube && x.volume >= 2 * vm && r >= 1.2 * rm && cp >= 0.65) t = ['#1c2330', 'Compras'];
+      else if (baja && x.volume >= 2 * vm && r >= 1.2 * rm && cp <= 0.35) t = ['#e0443e', 'Ventas'];
+      else if (sube && r <= 0.8 * rm && seco && cerca(x.high, A[i], false)) t = ['#2f6fe0', 'Sin demanda'];
+      else if (baja && r <= 0.8 * rm && seco && cerca(x.low, A[i], true)) t = ['#12967e', 'Sin oferta'];
       if (t) M.push({ time: x.time, position: 'aboveBar', color: t[0], shape: 'arrowDown', size: 0.6, id: t[1] });
     }
     return M;
@@ -348,12 +390,12 @@
     for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
     volMedia.setData(vm);
     pintarLectura();
-    chart.applyOptions({ timeScale: { timeVisible: st.tf === '60m', secondsVisible: false } });
+    chart.applyOptions({ timeScale: { timeVisible: INTRA(st.tf), secondsVisible: false } });
     ajustarPaneles(); cerrarInfo();
     if (resetVista) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, b.length - 220), to: b.length + 6 });
     pintarAnalisis();
     leyenda(b[b.length - 1], b[b.length - 2]);
-    document.querySelectorAll('#tfs button').forEach(x => x.classList.toggle('on', x.dataset.tf === st.tf));
+    document.querySelectorAll('#tfs button').forEach(x => { x.classList.toggle('on', x.dataset.tf === st.tf); x.disabled = !st.datos[x.dataset.tf]; x.title = st.datos[x.dataset.tf] ? '' : 'Sin datos todavía: llegan con la próxima actualización diaria'; });
   }
 
   function pintarAnalisis() {
@@ -454,6 +496,12 @@
   // Giros locales (máximo/mínimo de ±4 velas) de las últimas 300 velas, agrupados por cercanía de precio.
   // Un nivel vale si el precio ha girado ahí al menos 2 veces. Se dibuja en el extremo del grupo.
   function nivelesAuto(b) {
+    const T = nivelesTodos(b), fuertes = T.filter(x => x.n >= 3), L = fuertes.length ? fuertes : T;
+    const R = L.filter(x => !x.sop).sort((x, y) => x.p - y.p).slice(0, 2);
+    const S = L.filter(x => x.sop).sort((x, y) => y.p - x.p).slice(0, 2);
+    return R.concat(S).sort((x, y) => y.p - x.p);
+  }
+  function nivelesTodos(b) {
     const n = b.length; if (n < 30) return [];
     const k = 4, ini = Math.max(k, n - 300), tol = 1.2 * atr(b)[n - 1], pts = [];
     for (let i = ini; i < n - 2; i++) {
@@ -478,7 +526,7 @@
       return { p: Math.round(p * 100) / 100, n: x.length, sop: p <= cierre, peso: x.length + (n - ult < 60 ? 0.5 : 0) };
     }).sort((x, y) => y.peso - x.peso)
       .filter((x, k, arr) => !arr.slice(0, k).some(y => Math.abs(y.p - x.p) < tol * 0.6))   // sin niveles pegados: queda el más fuerte
-      .slice(0, 8).sort((x, y) => y.p - x.p);
+      .sort((x, y) => y.p - x.p);
   }
 
   // ---------- distribución en zona clavicular (Paco Gómez, tutoría 20/05/2014)
@@ -540,21 +588,22 @@
     $('srAuto').classList.toggle('on', st.srAuto);
     st.autos = st.srAuto ? nivelesAuto(barras()) : [];
     st.autos.forEach(a => st.lineasAuto.push(velas.createPriceLine({
-      price: a.p, color: a.sop ? '#12967e' : '#e0443e', lineWidth: a.n >= 4 ? 2 : 1, lineStyle: LC.LineStyle.Dashed,
+      price: a.p, color: a.sop ? SOP : RES, lineWidth: a.n >= 4 ? 2 : 1, lineStyle: LC.LineStyle.Dashed,
       axisLabelVisible: true, title: (a.sop ? 'S' : 'R') + ' ×' + a.n,
     })));
     $('autos').innerHTML = st.autos.length ? st.autos.map((a, k) =>
-      `<div class="nivel"><i style="background:${a.sop ? '#12967e' : '#e0443e'}"></i><span>${a.sop ? 'Soporte' : 'Resistencia'}</span>
+      `<div class="nivel"><i style="background:${a.sop ? SOP : RES}"></i><span>${a.sop ? 'Soporte' : 'Resistencia'}</span>
        <span>${nf(a.p)} <small>×${a.n}</small></span><button class="x" data-k="${k}" title="Guardar como nivel propio">+</button></div>`).join('')
       : `<div class="vacio">${st.srAuto ? 'Ninguno con 2 toques o más' : 'Desactivados'}</div>`;
+    if (st.autos.length) $('autos').innerHTML += '<p class="nota">Solo los más cercanos: 2 resistencias por encima y 2 soportes por debajo, de 3 toques o más.</p>';
   }
   $('autos').addEventListener('click', e => {
     const k = e.target.dataset && e.target.dataset.k; if (k == null) return;
-    dibs.push({ tipo: 'horiz', p: st.autos[+k].p, c: st.color }); st.sel = dibs.length - 1; guardarDibs();
+    const a = st.autos[+k]; dibs.push({ tipo: 'horiz', p: a.p, c: a.sop ? SOP : RES, tf: st.tf, g: st.grosor, e: st.estilo }); st.sel = dibs.length - 1; guardarDibs();
   });
 
   // ---------- dibujos del usuario: línea, horizontal, rectángulo y elipse
-  // Se guardan por valor, anclados a fecha y precio, y se ven en todas las temporalidades.
+  // Se guardan por valor, anclados a fecha y precio. Cada dibujo se ve SOLO en la temporalidad donde se hizo (campo tf).
   const claveDib = () => `dib:${st.sym}`;
   const FLECHAS = ['fsube', 'fbaja'];
   let dibs = [];
@@ -572,10 +621,33 @@
       D.push({ tipo: 'fib', a: { t: ep(m.a.t), p: m.a.p }, b: { t: ep(m.b.t), p: m.b.p }, tf, c: '#c98500' });
       store.del(`fib:${st.sym}:${tf}`); migrado = true;
     });
-    if (migrado) store.set(claveDib(), D);
+    let sinTf = false;
+    D.forEach(d => { if (!d.tf) { d.tf = '1d'; sinTf = true; } });     // horizontales antiguas sin temporalidad: al diario
+    if (migrado || sinTf) store.set(claveDib(), D);
     dibs = D; st.sel = -1; st.previa = null;
   }
   const guardarDibs = () => { store.set(claveDib(), dibs); pintarDibujos(); };
+  const vis = d => d.tf === st.tf;               // ¿se ve en la temporalidad actual?
+  const FIG = ['rect', 'elipse'];                // con tiradores en las 4 esquinas y los 4 lados
+  const RELL = ['rect', 'elipse', 'canal'];      // con relleno
+  function trazo(ctx, d, sel) {                  // grosor (1/2/4) y tipo de línea: s continua, p puntos, g guiones
+    const g = d.g || 2; ctx.lineWidth = g + (sel ? 1 : 0); ctx.lineCap = 'butt';
+    if (d.e === 'p') { ctx.lineCap = 'round'; ctx.setLineDash([0.1, 2 * g + 3]); }
+    else if (d.e === 'g') ctx.setLineDash([6 + 3 * g, 4 + g]);
+    else ctx.setLineDash([]);
+  }
+  function rellenar(ctx, d, alfa) {              // f: sin definir = color del contorno muy suave; 'no' = sin relleno; color
+    if (d.f === 'no') return;
+    ctx.save(); ctx.setLineDash([]); ctx.fillStyle = d.f || d.c; ctx.globalAlpha = d.f ? 0.22 : alfa; ctx.fill(); ctx.restore();
+  }
+  function tiradores(d, g) {                     // puntos de agarre del dibujo seleccionado
+    if (FIG.includes(d.tipo)) {
+      const x1 = Math.min(g.xa, g.xb), x2 = Math.max(g.xa, g.xb), y1 = Math.min(g.ya, g.yb), y2 = Math.max(g.ya, g.yb), xm = (x1 + x2) / 2, ym = (y1 + y2) / 2;
+      return [['nw', x1, y1], ['n', xm, y1], ['ne', x2, y1], ['e', x2, ym], ['se', x2, y2], ['s', xm, y2], ['sw', x1, y2], ['w', x1, ym]];
+    }
+    return [['a', g.xa, g.ya], ['b', g.xb, g.yb]].concat(d.tipo === 'canal' ? [['c', g.xc, g.yc]] : []);
+  }
+  const CURSOR = { nw: 'rs-nwse', se: 'rs-nwse', ne: 'rs-nesw', sw: 'rs-nesw', n: 'rs-ns', s: 'rs-ns', e: 'rs-ew', w: 'rs-ew' };
 
   // índice de la vela de la temporalidad actual que corresponde a un instante marcado en otra
   function indiceDe(e, tfOrigen) {
@@ -614,9 +686,9 @@
   }
   function trazar(ctx, d, w, sel) {
     const g = geo(d); if (!g) return;
-    ctx.save(); ctx.strokeStyle = d.c; ctx.fillStyle = d.c; ctx.lineWidth = sel ? 3 : 2;
+    ctx.save(); ctx.strokeStyle = d.c; ctx.fillStyle = d.c; trazo(ctx, d, sel);
     if (d.tipo === 'horiz') {
-      ctx.beginPath(); ctx.moveTo(0, g.y); ctx.lineTo(w, g.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, g.y); ctx.lineTo(w, g.y); ctx.stroke(); ctx.setLineDash([]);
       ctx.font = '600 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(d.pn ? nvol(Math.round(d.p)) : nf(d.p), w - 6, g.y - 4);
     } else if (FLECHAS.includes(d.tipo)) {         // punta en el punto marcado; cuerpo debajo (▲) o encima (▼)
       const s = d.tipo === 'fsube' ? 1 : -1, x = g.xa, y = g.ya;
@@ -629,7 +701,7 @@
     } else if (d.tipo === 'canal') {
       const [x1, y1, x2, y2] = finLinea(d, g, w), [u1, v1, u2, v2] = finLinea(d, { xa: g.xa, ya: g.yca, xb: g.xb, yb: g.ycb }, w);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(u2, v2); ctx.lineTo(u1, v1); ctx.closePath();
-      ctx.globalAlpha = 0.06; ctx.fill(); ctx.globalAlpha = 1;
+      rellenar(ctx, d, 0.06);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(u1, v1); ctx.lineTo(u2, v2); ctx.stroke();
       ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.globalAlpha = 0.6;      // línea media del canal
@@ -640,8 +712,9 @@
       const z1 = N.find(n => n.r === 0.382), z2 = N.find(n => n.r === 0.618);
       if (z1 && z2) { ctx.globalAlpha = 0.08; ctx.fillRect(x0, Math.min(z1.y, z2.y), w - x0, Math.abs(z2.y - z1.y)); ctx.globalAlpha = 1; }
       ctx.font = '600 11px sans-serif'; ctx.textAlign = 'left';
+      const gz = d.g || 2;
       N.forEach(n => {
-        ctx.lineWidth = n.zona ? (sel ? 3 : 2) : 1; ctx.globalAlpha = n.zona ? 1 : 0.75;
+        trazo(ctx, d, false); ctx.lineWidth = n.zona ? gz + (sel ? 1 : 0) : Math.max(1, gz / 2); ctx.globalAlpha = n.zona ? 1 : 0.75;
         ctx.beginPath(); ctx.moveTo(x0, n.y); ctx.lineTo(w, n.y); ctx.stroke();
         ctx.fillText(nf(n.r * 100, 1) + ' %   ' + nf(n.p), Math.max(4, x0 + 4), n.y - 3);
       });
@@ -650,11 +723,16 @@
       ctx.beginPath();
       if (d.tipo === 'rect') ctx.rect(Math.min(g.xa, g.xb), Math.min(g.ya, g.yb), Math.abs(g.xb - g.xa), Math.abs(g.yb - g.ya));
       else ctx.ellipse((g.xa + g.xb) / 2, (g.ya + g.yb) / 2, Math.max(1, Math.abs(g.xb - g.xa) / 2), Math.max(1, Math.abs(g.yb - g.ya) / 2), 0, 0, 2 * Math.PI);
-      ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
+      rellenar(ctx, d, 0.1); ctx.stroke();
     }
-    if (sel && d.tipo !== 'horiz' && !FLECHAS.includes(d.tipo)) {             // tiradores en los dos extremos
+    if (sel && d.tipo !== 'horiz' && !FLECHAS.includes(d.tipo)) {             // tiradores: extremos (líneas) o esquinas y lados (rectángulo y elipse)
+      ctx.setLineDash([]);
+      if (d.tipo === 'elipse') {                 // recuadro guía para ver dónde están las esquinas
+        ctx.save(); ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.globalAlpha = 0.6;
+        ctx.strokeRect(Math.min(g.xa, g.xb), Math.min(g.ya, g.yb), Math.abs(g.xb - g.xa), Math.abs(g.yb - g.ya)); ctx.restore();
+      }
       ctx.lineWidth = 2; ctx.fillStyle = '#fff';
-      [[g.xa, g.ya], [g.xb, g.yb]].concat(d.tipo === 'canal' ? [[g.xc, g.yc]] : []).forEach(([x, y]) => { ctx.beginPath(); ctx.rect(x - 5, y - 5, 10, 10); ctx.fill(); ctx.stroke(); });
+      tiradores(d, g).forEach(([, x, y]) => { ctx.beginPath(); ctx.rect(x - 6, y - 6, 12, 12); ctx.fill(); ctx.stroke(); });
     }
     ctx.restore();
   }
@@ -676,7 +754,15 @@
           }
         }
         velaMarcada(s);
-        dibs.forEach((d, k) => { if (!d.pn) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
+        st.alertas.filter(a => a.symbol === st.sym).forEach(a => {          // zona a vigilar (config/alertas.json), en todas las temporalidades
+          const y1 = velas.priceToCoordinate(a.hasta), y2 = velas.priceToCoordinate(a.desde); if (y1 == null || y2 == null) return;
+          const ctx = s.context, W = s.mediaSize.width, h = Math.max(2, y2 - y1);
+          ctx.save(); ctx.fillStyle = '#e8890c'; ctx.globalAlpha = 0.16; ctx.fillRect(0, y1, W, h); ctx.globalAlpha = 1;
+          ctx.strokeStyle = '#e8890c'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+          ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(W, y1); ctx.moveTo(0, y1 + h); ctx.lineTo(W, y1 + h); ctx.stroke();
+          ctx.font = '600 11px sans-serif'; ctx.fillStyle = '#b86a00'; ctx.fillText(`VIGILAR ${a.sentido === 'baja' ? '↓' : '↑'} ${nf(a.desde)}–${nf(a.hasta)}`, 8, y1 - 4); ctx.restore();
+        });
+        dibs.forEach((d, k) => { if (!d.pn && vis(d)) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
         if (st.previa && !st.previa.pn) trazar(s.context, st.previa, s.mediaSize.width, false);
       }) }) }];
     },
@@ -696,7 +782,7 @@
     paneViews() {
       return [{ zOrder: () => 'top', renderer: () => ({ draw: t => t.useMediaCoordinateSpace(s => {
         velaMarcada(s);
-        dibs.forEach((d, k) => { if (d.pn) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
+        dibs.forEach((d, k) => { if (d.pn && vis(d)) trazar(s.context, d, s.mediaSize.width, k === st.sel); });
         if (st.previa && st.previa.pn) trazar(s.context, st.previa, s.mediaSize.width, false);
       }) }) }];
     },
@@ -707,14 +793,10 @@
   // ¿qué dibujo hay bajo el cursor? Primero los tiradores del seleccionado.
   function tocar(x, y, pn) {
     const T = 7, w = chart.timeScale().width();
-    const sel = dibs[st.sel], gs = sel && sel.tipo !== 'horiz' && !FLECHAS.includes(sel.tipo) && (st.volInt || !sel.pn === !pn) && geo(sel);
-    if (gs) {
-      if (Math.hypot(x - gs.xa, y - gs.ya) <= 9) return { k: st.sel, parte: 'a' };
-      if (Math.hypot(x - gs.xb, y - gs.yb) <= 9) return { k: st.sel, parte: 'b' };
-      if (sel.tipo === 'canal' && Math.hypot(x - gs.xc, y - gs.yc) <= 9) return { k: st.sel, parte: 'c' };
-    }
+    const sel = dibs[st.sel], gs = sel && vis(sel) && sel.tipo !== 'horiz' && !FLECHAS.includes(sel.tipo) && (st.volInt || !sel.pn === !pn) && geo(sel);
+    if (gs) for (const [parte, hx, hy] of tiradores(sel, gs)) if (Math.abs(x - hx) <= 9 && Math.abs(y - hy) <= 9) return { k: st.sel, parte };
     for (let k = dibs.length - 1; k >= 0; k--) {
-      const d = dibs[k]; if (!st.volInt && !d.pn !== !pn) continue; const g = geo(d); if (!g) continue; let ok = false;   // con el volumen integrado todo está en el mismo panel
+      const d = dibs[k]; if (!vis(d) || (!st.volInt && !d.pn !== !pn)) continue; const g = geo(d); if (!g) continue; let ok = false;   // con el volumen integrado todo está en el mismo panel
       if (d.tipo === 'horiz') ok = Math.abs(y - g.y) <= T;
       else if (FLECHAS.includes(d.tipo)) { const s = d.tipo === 'fsube' ? 1 : -1; ok = Math.abs(x - g.xa) <= 9 && (y - g.ya) * s >= -4 && (y - g.ya) * s <= 26; }
       else if (d.tipo === 'linea' || d.tipo === 'canal') {
@@ -730,11 +812,11 @@
       } else if (d.tipo === 'rect') {
         const xi = Math.min(g.xa, g.xb), xs = Math.max(g.xa, g.xb), yi = Math.min(g.ya, g.yb), ys = Math.max(g.ya, g.yb);
         const dentro = x >= xi - T && x <= xs + T && y >= yi - T && y <= ys + T;
-        ok = dentro && !(x > xi + T && x < xs - T && y > yi + T && y < ys - T);
+        ok = dentro && (d.f && d.f !== 'no' ? true : !(x > xi + T && x < xs - T && y > yi + T && y < ys - T));   // con relleno se coge también por dentro
       } else {
         const rx = Math.max(1, Math.abs(g.xb - g.xa) / 2), ry = Math.max(1, Math.abs(g.yb - g.ya) / 2);
         const r = Math.hypot((x - (g.xa + g.xb) / 2) / rx, (y - (g.ya + g.yb) / 2) / ry);
-        ok = Math.abs(r - 1) * Math.min(rx, ry) <= T;
+        ok = Math.abs(r - 1) * Math.min(rx, ry) <= T || (d.f && d.f !== 'no' && r < 1);
       }
       if (ok) return { k, parte: 'mover' };
     }
@@ -745,13 +827,16 @@
   function pintarDibujos() {
     if (st.sel >= dibs.length) st.sel = -1;
     const sel = dibs[st.sel];
-    $('borrar').disabled = !sel;
+    $('borrar').disabled = !sel; pintarTrazo();
     $('prolongar').disabled = !(sel && (sel.tipo === 'linea' || sel.tipo === 'canal'));
     $('prolongar').classList.toggle('on', !!(sel && sel.ext));
-    $('dibujos').innerHTML = dibs.length ? dibs.map((d, k) =>
+    const aqui = dibs.map((d, k) => [d, k]).filter(([d]) => vis(d)), otros = {};
+    dibs.forEach(d => { if (!vis(d)) otros[d.tf] = (otros[d.tf] || 0) + 1; });
+    $('dibujos').innerHTML = (aqui.length ? aqui.map(([d, k]) =>
       `<div class="nivel fila ${k === st.sel ? 'sel' : ''}" data-k="${k}"><i style="background:${d.c}"></i><span>${NOMBRE[d.tipo]}
        <small>${d.pn ? 'en volumen' : d.tipo === 'horiz' ? nf(d.p) : FLECHAS.includes(d.tipo) ? nf(d.a.p) : nf(d.a.p) + ' → ' + nf(d.b.p)}</small></span><button class="x" data-x="${k}" title="Borrar">×</button></div>`).join('')
-      : '<div class="vacio">Ninguno todavía</div>';
+      : `<div class="vacio">Ninguno en ${TF_NOMBRE[st.tf]}</div>`) +
+      (Object.keys(otros).length ? `<div class="nota" style="margin-top:4px">En otras temporalidades: ${TFS.filter(t => otros[t]).map(t => `${TF_NOMBRE[t]} ${otros[t]}`).join(' · ')}</div>` : '');
     tablaFib();
     repintar();
   }
@@ -767,12 +852,35 @@
 
   // ---------- colores de dibujo
   function pintarColores() {
-    $('colores').innerHTML = COLORES.map(c => `<i data-c="${c}" class="${c === st.color ? 'on' : ''}" style="background:${c}"></i>`).join('');
+    const sel = dibs[st.sel], c0 = sel ? sel.c : st.color, f0 = sel && RELL.includes(sel.tipo) ? (sel.f || null) : st.relleno;
+    $('colores').innerHTML = COLORES.map(c => `<i data-c="${c}" class="${c === c0 ? 'on' : ''}" style="background:${c}" title="Color de la línea o del contorno"></i>`).join('');
+    $('relleno').innerHTML = `<i data-f="no" class="sin ${f0 === 'no' ? 'on' : ''}" title="Sin relleno"></i>` +
+      COLORES.map(c => `<i data-f="${c}" class="${c === f0 ? 'on' : ''}" style="background:${c}55" title="Color del interior"></i>`).join('');
   }
+  function pintarTrazo() {                       // botones de grosor y tipo de línea: los del dibujo seleccionado o los de por defecto
+    const sel = dibs[st.sel], g0 = sel ? (sel.g || 2) : st.grosor, e0 = sel ? (sel.e || 's') : st.estilo;
+    document.querySelectorAll('.trazo button[data-g]').forEach(b => b.classList.toggle('on', +b.dataset.g === g0));
+    document.querySelectorAll('.trazo button[data-e]').forEach(b => b.classList.toggle('on', b.dataset.e === e0));
+    pintarColores();
+  }
+  document.querySelectorAll('.trazo button[data-g]').forEach(b => b.onclick = () => {
+    st.grosor = +b.dataset.g; store.set('grosor', st.grosor);
+    if (dibs[st.sel]) { dibs[st.sel].g = st.grosor; guardarDibs(); } else pintarTrazo();
+  });
+  document.querySelectorAll('.trazo button[data-e]').forEach(b => b.onclick = () => {
+    st.estilo = b.dataset.e; store.set('estilo', st.estilo);
+    if (dibs[st.sel]) { dibs[st.sel].e = st.estilo; guardarDibs(); } else pintarTrazo();
+  });
+  $('relleno').addEventListener('click', e => {
+    const f = e.target.dataset && e.target.dataset.f; if (!f) return;
+    st.relleno = f; store.set('relleno', f);
+    const d = dibs[st.sel]; if (d && RELL.includes(d.tipo)) { d.f = f; guardarDibs(); } else pintarColores();
+  });
   $('colores').addEventListener('click', e => {
     const c = e.target.dataset && e.target.dataset.c; if (!c) return;
-    st.color = c; store.set('color', c); pintarColores();
+    st.color = c; store.set('color', c);
     if (st.sel >= 0 && dibs[st.sel]) { dibs[st.sel].c = c; guardarDibs(); }     // cambia el color del dibujo seleccionado
+    else pintarColores();
   });
   pintarColores();
 
@@ -805,7 +913,7 @@
     const b = barras(), i = m.i; if (i > b.length - 1) return cerrarInfo();
     if (i === st.vela) return cerrarInfo();                 // segundo clic en la misma vela: se cierra
     const x = b[i], ant = b[i - 1], e = ep(x.time), d = new Date(e * 1000);
-    const hora = st.tf === '60m' ? ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') : '';
+    const hora = INTRA(st.tf) ? ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') : '';
     const v = ant ? (x.close / ant.close - 1) * 100 : null, cls = v == null ? '' : v >= 0 ? 'up' : 'down';
     let s = 0, n = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { s += b[k].volume; n++; }
     const media = s / n, rel = media ? x.volume / media : null;
@@ -858,7 +966,8 @@
   }
   function nueva(a, c, horizontal) {
     const f = st.modo === 'fib';
-    const d = { tipo: st.modo, a: dePos(a.i, f ? pegar(a) : a.p), b: dePos(c.i, horizontal ? a.p : f ? pegar(c) : c.p), tf: st.tf, c: st.color };
+    const d = { tipo: st.modo, a: dePos(a.i, f ? pegar(a) : a.p), b: dePos(c.i, horizontal ? a.p : f ? pegar(c) : c.p), tf: st.tf, c: st.color, g: st.grosor, e: st.estilo };
+    if (RELL.includes(d.tipo) && st.relleno) d.f = st.relleno;
     if (a.pn) d.pn = 1;
     if (d.tipo === 'canal') { d.ext = true; d.o = offsetCanal(d); }
     return d;
@@ -909,6 +1018,13 @@
           const base = o.ib === o.ia ? o.pa : o.pa + (o.pb - o.pa) * (m.i - o.ia) / (o.ib - o.ia);
           d.o = Math.round((m.p - base) * 10000) / 10000; repintar(); return;
         }
+        if (CURSOR[arr.parte]) {                  // esquina o lado de rectángulo / elipse: cambia el tamaño
+          let L = Math.min(o.ia, o.ib), Rr = Math.max(o.ia, o.ib), T = Math.max(o.pa, o.pb), B = Math.min(o.pa, o.pb);
+          if (arr.parte.includes('w')) L = m.i; if (arr.parte.includes('e')) Rr = m.i;
+          if (arr.parte.includes('n')) T = m.p; if (arr.parte.includes('s')) B = m.p;
+          d.a = dePos(Math.min(L, Rr), Math.max(T, B)); d.b = dePos(Math.max(L, Rr), Math.min(T, B)); d.tf = st.tf;
+          repintar(); return;
+        }
         if (arr.parte === 'a') { d.a = dePos(m.i, pm); d.b = dePos(o.ib, o.pb); }
         else if (arr.parte === 'b') { d.a = dePos(o.ia, o.pa); d.b = dePos(m.i, e.shiftKey && d.tipo === 'linea' ? o.pa : pm); }
         else { d.a = dePos(o.ia + di, o.pa + dp); d.b = dePos(o.ib + di, o.pb + dp); }
@@ -921,7 +1037,10 @@
       if (a && m) { st.previa = nueva(a, m, e.shiftKey && st.modo === 'linea'); repintar(); }
       return;
     }
-    $('graf').classList.toggle('sobre', !st.modo && !!m && !!tocar(m.x, m.y, m.pn));
+    const h = !st.modo && m ? tocar(m.x, m.y, m.pn) : null;
+    $('graf').classList.remove('rs-nwse', 'rs-nesw', 'rs-ns', 'rs-ew');
+    $('graf').classList.toggle('sobre', !!h && !CURSOR[h.parte]);
+    if (h && CURSOR[h.parte]) $('graf').classList.add(CURSOR[h.parte]);
   });
 
   window.addEventListener('pointerup', e => {
@@ -936,7 +1055,7 @@
     }
     if (!m) return;
     if (FLECHAS.includes(st.modo)) { const a = dePos(m.i, m.p); return terminar(Object.assign({ tipo: st.modo, a, b: Object.assign({}, a), tf: st.tf, c: st.color }, m.pn ? { pn: 1 } : {})); }
-    if (st.modo === 'horiz') return terminar(Object.assign({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color }, m.pn ? { pn: 1 } : {}));
+    if (st.modo === 'horiz') return terminar(Object.assign({ tipo: 'horiz', p: Math.round(m.p * 100) / 100, c: st.color, tf: st.tf, g: st.grosor, e: st.estilo }, m.pn ? { pn: 1 } : {}));
     const sh = e.shiftKey && st.modo === 'linea';
     if (mov > 6) return terminar(nueva(g.ini, m, sh));                     // arrastrando
     if (!st.puntoA) { st.puntoA = m; aviso(st.modo === 'fib' ? 'Ahora haz clic en el FINAL del tramo' : 'Ahora haz clic en el segundo punto'); return; }   // clic y clic
@@ -953,7 +1072,7 @@
   // ---------- botones
   $('tfs').addEventListener('click', e => {
     const tf = e.target.dataset.tf; if (!tf || !st.datos[tf]) return;
-    st.tf = tf; store.set('tf', tf); setModo(null); pintar(true);
+    st.tf = tf; store.set('tf', tf); st.sel = -1; setModo(null); pintar(true);
   });
   $('fibAuto').onclick = () => { st.fibAuto = !st.fibAuto; store.set('fibAuto', st.fibAuto); pintarAnalisis(); };
   FORMAS.forEach(t => { $('t_' + t).onclick = () => setModo(st.modo === t ? null : t); });
@@ -1053,6 +1172,7 @@
     try { st.lista = await json('config/tickers.json'); } catch (e) { return fallo('No se pudo leer config/tickers.json'); }
     const pedido = new URLSearchParams(location.search).get('s') || store.get('sym', null);
     try { (await json('data/scan.json')).valores.forEach(x => { st.scan[x.symbol] = x; }); } catch (e) {}
+    try { st.alertas = await json('config/alertas.json'); } catch (e) {}
     window.__wyk = { st, zigzag, tendencia, chart };   // para pruebas
     await cargar(pedido);
     aplicarVolumen();

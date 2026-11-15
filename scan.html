@@ -58,6 +58,10 @@
   </div>
 </header>
 <main>
+  <h2>Alertas de precio <small id="nAle"></small></h2>
+  <p class="exp">Zonas que has pedido vigilar. El corte cuenta con el <b>cierre diario</b> al otro lado de la zona.</p>
+  <div id="ale"></div>
+
   <h2>Posibles entradas: compra tras corrección <small id="nEnt"></small></h2>
   <p class="exp">Tendencia alcista en semanal y diario; el precio corrige entre el 38,2 % y el 70 % del último impulso <b>sin volumen</b> (el impulso sí lo tuvo) y deja de hacer mínimos («se queda sin presión bajista»). Señales de hoy y de las 4 sesiones anteriores que siguen vivas.</p>
   <div id="ent"></div>
@@ -182,6 +186,13 @@
   const leer = u => fetch(u, { cache: 'no-cache' }).then(r => r.json());
   Promise.all([leer('data/scan.json'), leer('config/tickers.json').catch(() => [])]).then(([j, T]) => {
     const ind = {}; T.forEach(x => { ind[x.symbol] = x.indices; });
+    const A = j.alertas || [], col = { cortado: 'up', 'en zona': 'flat', esperando: '' };
+    $('nAle').textContent = `(${A.length})`;
+    $('ale').innerHTML = A.length ? `<table><tr><th>Valor</th><th>Zona</th><th>Estado</th><th>Nota</th></tr>` + A.map(a => `<tr>
+      <td><a href="index.html?s=${encodeURIComponent(a.symbol)}">${a.symbol}</a></td>
+      <td class="n">${nf(a.desde)} – ${nf(a.hasta)} ${a.sentido === 'baja' ? '↓' : '↑'}</td>
+      <td><b class="${col[a.estado] || ''}">${a.estado === 'cortado' ? 'CORTADA' : a.estado === 'en zona' ? 'En la zona' : 'Esperando'}</b><br><span style="font-size:12px">${a.txt}</span></td>
+      <td style="font-size:12px">${a.nota || ''}</td></tr>`).join('') + '</table>' : '<div class="vacio">Ninguna</div>';
     datos = j.valores; datos.forEach(x => { x.indices = ind[x.symbol] || [x.mercado]; });
     if (mercado !== 'Todos' && !datos.some(x => x.indices.includes(mercado))) mercado = 'Todos';
     $('fecha').textContent = `${datos.length} valores · calculado el ${new Date(j.generado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
