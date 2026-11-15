@@ -21,6 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import entradas  # noqa: E402
 import patrones  # noqa: E402
+import seleccion  # noqa: E402
+
+BENCH = {}   # mercado -> (rendimiento 3 meses, 6 meses) del índice de referencia
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -375,6 +378,9 @@ def analizar(info):
                 r["patron"] = pt
             break
 
+    # selección integrada: 5 pasos de Schroeder + trincheras + entradas (ver seleccion.py)
+    r["sel"] = seleccion.evaluar(d, a, r, ev, rango, BENCH.get(r["mercado"]), sym)
+
     r["puntos"], r["motivos"], r["descartada"] = puntos, motivos, bool(dist)
     r["candidata"] = bool(mayor and not dist and puntos >= 6 and (reciente or ((en_fib or rango) and en_sop)))
     return r
@@ -411,8 +417,32 @@ def alertas_precio():
     return out
 
 
+INDICE = {"USA": "GSPC", "España": "IBEX"}
+
+
+def referencias(lista):
+    """Rendimiento a 3 y 6 meses del índice de cada mercado (data/_indices/<nombre>/1d.json).
+    Si aún no está descargado, se usa la mediana de los valores de ese mercado."""
+    for mercado in {x.get("mercado") for x in lista}:
+        idx = cargar("_indices/" + INDICE.get(mercado, ""), "1d")
+        if idx and idx["n"] > 130:
+            BENCH[mercado] = (seleccion.rendimiento(idx["c"], 63), seleccion.rendimiento(idx["c"], 126))
+            continue
+        r3, r6 = [], []
+        for x in lista:
+            if x.get("mercado") != mercado:
+                continue
+            d = cargar(x["symbol"], "1d")
+            if d and d["n"] > 130:
+                r3.append(seleccion.rendimiento(d["c"], 63)); r6.append(seleccion.rendimiento(d["c"], 126))
+        if r3:
+            r3.sort(); r6.sort()
+            BENCH[mercado] = (r3[len(r3) // 2], r6[len(r6) // 2])
+
+
 def main():
     lista = json.loads(CONFIG.read_text())
+    referencias(lista)
     out, errores = [], 0
     for info in lista:
         try:
@@ -430,6 +460,8 @@ def main():
     print(f"Entradas tras corrección: {len(ent)} ({', '.join(ent)})")
     pat = [x["symbol"] for x in out if x.get("patron")]
     print(f"Patrones en soportes: {len(pat)} ({', '.join(pat)})")
+    sel = sorted([x for x in out if x.get("sel") and not x["sel"]["descartada"]], key=lambda x: -x["sel"]["nota"])[:10]
+    print("Selección: " + ", ".join(f"{x['symbol']} {x['sel']['nota']}/10" for x in sel))
     print(f"Scan: {len(out)} valores, {len(cand)} candidatas ({', '.join(cand)}), {errores} errores")
     return 1 if errores else 0
 

@@ -167,7 +167,23 @@ def actualizar(symbol: str) -> None:
           f"5m {len(cortos.get('5m', []))}, 15m {len(cortos.get('15m', []))}, 30m {len(cortos.get('30m', []))}")
 
 
+INDICES = {"GSPC": "^GSPC", "IBEX": "^IBEX"}   # referencias para la fuerza relativa
+
+
+def actualizar_indices() -> None:
+    for nombre, ticker in INDICES.items():
+        try:
+            diario = limpiar(sin_zona(PROVEEDOR(ticker, "1d")))
+            diario.index = diario.index.normalize()
+            guardar("_indices/" + nombre, "1d", a_barras(diario, False))
+            print(f"OK índice {nombre}: {len(diario)} barras")
+        except Exception as e:
+            print(f"AVISO índice {nombre}: {e}", file=sys.stderr)
+
+
 def main() -> int:
+    if not sys.argv[1:]:
+        actualizar_indices()
     simbolos = sys.argv[1:] or [t["symbol"] for t in json.loads(CONFIG.read_text())]
     errores = 0
     for s in simbolos:
