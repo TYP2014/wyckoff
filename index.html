@@ -83,7 +83,10 @@
   #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
     color: var(--down); padding: 20px; text-align: center; z-index: 7; background: var(--bg); }
 
-  aside { width: 230px; border-left: 1px solid var(--line); padding: 10px 12px; overflow: auto; font-size: 13px; }
+  .paso { display: flex; gap: 6px; margin: 3px 0; font-size: 12.5px; } .paso b { flex: none; width: 16px; text-align: center; }
+  .paso.si b { color: var(--up); } .paso.medio b { color: var(--amber); } .paso.no b { color: var(--down); }
+  .ent { font-size: 12px; border-top: 1px dashed var(--line); padding: 4px 0; } .ent.ok b.t { color: var(--up); }
+  aside { width: 270px; border-left: 1px solid var(--line); padding: 10px 12px; overflow: auto; font-size: 13px; }
   aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 6px; }
   aside section { margin-bottom: 16px; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -193,6 +196,10 @@
     </div>
     <aside>
       <section>
+        <h2>5 pasos de Schroeder · <span id="selNota"></span></h2>
+        <div id="selPanel" class="vacio">Sin datos del buscador</div>
+      </section>
+      <section>
         <h2>Fibonacci <span id="fibTipo"></span></h2>
         <div id="fibTabla" class="vacio">Sin tramo</div>
       </section>
@@ -206,7 +213,7 @@
         <p class="nota">Fibonacci es una herramienta más: se selecciona, se mueve, se cambia por sus extremos y se borra igual. Clic sobre un dibujo para seleccionarlo; arrástralo para moverlo, tira de un extremo para cambiarlo, Supr para borrarlo. Con el volumen en panel aparte se puede dibujar también sobre él. Canal: tira del tirador central para mover la paralela. Clic en una vela: recuadro con sus datos.</p>
       </section>
       <section>
-        <h2>Soportes y resistencias automáticos </h2>
+        <h2>Trincheras (soportes y resistencias)</h2>
         <div id="autos"></div>
         <p class="nota">Tus dibujos se guardan por valor en este navegador.</p>
       </section>
@@ -331,7 +338,7 @@
   const marcasVol = LC.createSeriesMarkers(vol, []);
   function lecturaVol(b) {
     const M = [], A = atr(b), N = nivelesTodos(b).filter(x => x.n >= 3);
-    const cerca = (p, A_, sop) => N.some(x => x.sop === sop && Math.abs(x.p - p) <= 0.5 * A_);
+    const cerca = (p, A_, sop) => N.some(x => x.sop === sop && p >= x.lo - 0.5 * A_ && p <= x.hi + 0.5 * A_);
     // En intradía cada vela se compara con las 20 anteriores de su MISMA HORA (la apertura siempre lleva mucho volumen)
     const intra = INTRA(st.tf), hist = {};
     for (let i = 0; i < b.length; i++) {
@@ -482,7 +489,23 @@
     }) : [];
     marcas.setMarkers(st.marcasFib.concat(ev, st.marcasDist || []).sort((x, y) => ep(x.time) - ep(y.time)));
   }
+  // ---------- selección: los 5 pasos de Schroeder con trincheras y entradas (calculado en el buscador, diario)
+  function pintarSel() {
+    const x = st.scan[st.sym], S = x && x.sel;
+    if (!S) { $('selPanel').className = 'vacio'; $('selPanel').textContent = 'Sin datos del buscador'; $('selNota').textContent = ''; return; }
+    const ic = { si: '✓', medio: '½', no: '✗' }, N = ['Línea de menor resistencia', 'Fuerza del activo', 'Causa', 'Sitio', 'Timing'];
+    $('selNota').innerHTML = `<b class="${S.nota >= 8 ? 'up' : S.nota >= 6 ? 'flat' : 'down'}">${S.nota}/10</b>`;
+    $('selPanel').className = '';
+    $('selPanel').innerHTML = S.pasos.map((p, k) => `<div class="paso ${p.estado}"><b>${ic[p.estado]}</b><span><b style="width:auto;color:var(--txt)">${N[k]}:</b> ${p.txt}</span></div>`).join('') +
+      (S.escenario.length ? `<ul style="margin:6px 0;padding-left:16px;font-size:12.5px">${S.escenario.map(e => `<li>${e}</li>`).join('')}</ul>` : '') +
+      S.entradas.map(e => `<div class="ent ${e.valida ? 'ok' : ''}"><b class="t">${e.valida ? '● ' : '○ '}${e.tipo.charAt(0).toUpperCase() + e.tipo.slice(1)}</b>
+        entrada <b>${nf(e.entrada)}</b> · stop <span class="down">${nf(e.stop)}</span> (−${nf(e.riesgo_pct, 1)} %) · objetivo <span class="up">${nf(e.obj)}</span> · B/R ${nf(e.br, 1)}
+        <div class="nota">${e.nota}</div></div>`).join('') +
+      (S.l60 ? `<div class="nota" style="margin-top:4px">Volumen 60 min (2 últimas sesiones): <b class="${S.l60.tono === 'favor' ? 'up' : S.l60.tono === 'contra' ? 'down' : ''}">${S.l60.txt}</b></div>` : '') +
+      '<p class="nota">● entrada que cumple lo que ha funcionado en la prueba histórica. Siempre hay probabilidad de perder: el stop es obligatorio.</p>';
+  }
   function pintarWy() {
+    pintarSel();
     $('wy').classList.toggle('on', st.wy);
     const w = st.scan[st.sym];
     if (!w) { $('wyPanel').className = 'vacio'; $('wyPanel').textContent = 'Sin datos del buscador'; return; }
@@ -492,18 +515,19 @@
       <ul style="margin:6px 0 0;padding-left:16px">${w.motivos.map(m => `<li>${m}</li>`).join('')}${w.avisos.map(a => `<li style="color:var(--accent);font-weight:600">${a.txt.replace('.', ',')}</li>`).join('')}</ul>`;
   }
 
-  // ---------- soportes y resistencias automáticos
-  // Giros locales (máximo/mínimo de ±4 velas) de las últimas 300 velas, agrupados por cercanía de precio.
-  // Un nivel vale si el precio ha girado ahí al menos 2 veces. Se dibuja en el extremo del grupo.
+  // ---------- TRINCHERAS: soportes y resistencias como ZONA (mismo criterio que scripts/seleccion.py)
+  // Giros (±4 velas) de las últimas 500 velas de la temporalidad en pantalla, agrupados a menos de 0,6 ATR.
+  // De cada zona: toques, defensas (giros que después se alejaron 2 ATR o más en 10 velas) y volumen en los toques.
+  // Se ven las 2 más cercanas por encima y por debajo con 3 toques o más.
   function nivelesAuto(b) {
     const T = nivelesTodos(b), fuertes = T.filter(x => x.n >= 3), L = fuertes.length ? fuertes : T;
-    const R = L.filter(x => !x.sop).sort((x, y) => x.p - y.p).slice(0, 2);
-    const S = L.filter(x => x.sop).sort((x, y) => y.p - x.p).slice(0, 2);
-    return R.concat(S).sort((x, y) => y.p - x.p);
+    const R = L.filter(x => !x.sop).sort((x, y) => x.lo - y.lo).slice(0, 2);
+    const S = L.filter(x => x.sop).sort((x, y) => y.hi - x.hi).slice(0, 2);
+    return R.concat(S).sort((x, y) => y.hi - x.hi);
   }
   function nivelesTodos(b) {
     const n = b.length; if (n < 30) return [];
-    const k = 4, ini = Math.max(k, n - 300), tol = 1.2 * atr(b)[n - 1], pts = [];
+    const k = 4, ini = Math.max(k, n - 500), a = atr(b), tol = 0.6 * a[n - 1], pts = [];
     for (let i = ini; i < n - 2; i++) {
       let esH = true, esL = true;
       for (let j = i - k; j <= Math.min(n - 1, i + k); j++) {
@@ -518,16 +542,23 @@
     const grupos = []; let g = [];
     pts.forEach(q => { if (g.length && q.p - g[0].p > tol) { grupos.push(g); g = []; } g.push(q); });
     if (g.length) grupos.push(g);
-    const cierre = b[n - 1].close;
+    const cierre = b[n - 1].close, A = a[n - 1];
+    const vm = i => { let s = 0, c = 0; for (let j = Math.max(0, i - 50); j < i; j++) { s += b[j].volume; c++; } return c ? s / c : 0; };
     return grupos.filter(x => x.length >= 2).map(x => {
-      const nH = x.filter(q => q.t === 'H').length, nL = x.length - nH;
-      const p = nH >= 0.7 * x.length ? x[x.length - 1].p : nL >= 0.7 * x.length ? x[0].p : x[x.length >> 1].p;
-      const ult = Math.max(...x.map(q => q.i));
-      return { p: Math.round(p * 100) / 100, n: x.length, sop: p <= cierre, peso: x.length + (n - ult < 60 ? 0.5 : 0) };
-    }).sort((x, y) => y.peso - x.peso)
-      .filter((x, k, arr) => !arr.slice(0, k).some(y => Math.abs(y.p - x.p) < tol * 0.6))   // sin niveles pegados: queda el más fuerte
-      .sort((x, y) => y.p - x.p);
+      const lo = x[0].p, hi = x[x.length - 1].p; let def = 0, vs = 0, nv = 0;
+      x.forEach(q => {
+        let mx = -Infinity, mn = Infinity; for (let j = q.i + 1; j < Math.min(n, q.i + 11); j++) { mx = Math.max(mx, b[j].high); mn = Math.min(mn, b[j].low); }
+        if (q.t === 'L' && mx - b[q.i].low >= 2 * a[q.i]) def++;
+        if (q.t === 'H' && b[q.i].high - mn >= 2 * a[q.i]) def++;
+        const m = vm(q.i); if (m) { vs += Math.max(...b.slice(Math.max(0, q.i - 1), q.i + 2).map(z => z.volume)) / m; nv++; }
+      });
+      const dentro = lo - 0.3 * A <= cierre && cierre <= hi;
+      const sop = hi < cierre || (dentro && cierre >= (lo + hi) / 2);
+      return { lo: Math.round(lo * 100) / 100, hi: Math.round(hi * 100) / 100, n: x.length, def, vol: nv ? vs / nv : 0, sop, dentro,
+        p: Math.round((sop ? hi : lo) * 100) / 100 };
+    }).sort((x, y) => y.hi - x.hi);
   }
+  const textoZona = a => (a.lo === a.hi ? nf(a.lo) : nf(a.lo) + '–' + nf(a.hi));
 
   // ---------- distribución en zona clavicular (Paco Gómez, tutoría 20/05/2014)
   // DÓNDE LLEGA: techo de un lateral a menos de 0,8 ATR de una resistencia con 3 giros o más (±4 velas, 300 velas antes).
@@ -587,15 +618,15 @@
     st.lineasAuto.forEach(l => velas.removePriceLine(l)); st.lineasAuto = [];
     $('srAuto').classList.toggle('on', st.srAuto);
     st.autos = st.srAuto ? nivelesAuto(barras()) : [];
-    st.autos.forEach(a => st.lineasAuto.push(velas.createPriceLine({
-      price: a.p, color: a.sop ? SOP : RES, lineWidth: a.n >= 4 ? 2 : 1, lineStyle: LC.LineStyle.Dashed,
+    st.autos.forEach(a => st.lineasAuto.push(velas.createPriceLine({        // etiqueta en el borde que mira al precio; la franja la pinta la capa
+      price: a.p, color: a.sop ? SOP : RES, lineWidth: 1, lineStyle: LC.LineStyle.Dashed, lineVisible: false,
       axisLabelVisible: true, title: (a.sop ? 'S' : 'R') + ' ×' + a.n,
     })));
     $('autos').innerHTML = st.autos.length ? st.autos.map((a, k) =>
-      `<div class="nivel"><i style="background:${a.sop ? SOP : RES}"></i><span>${a.sop ? 'Soporte' : 'Resistencia'}</span>
-       <span>${nf(a.p)} <small>×${a.n}</small></span><button class="x" data-k="${k}" title="Guardar como nivel propio">+</button></div>`).join('')
+      `<div class="nivel"><i style="background:${a.sop ? SOP : RES}"></i><span>${a.sop ? 'Soporte' : 'Resistencia'}${a.dentro ? ' <small>(dentro)</small>' : ''}<br>
+       <span>${textoZona(a)}</span> <small>${a.n} toques · defendida ${a.def} · vol ${nf(a.vol, 1)}×</small></span><button class="x" data-k="${k}" title="Guardar el borde como horizontal propia">+</button></div>`).join('')
       : `<div class="vacio">${st.srAuto ? 'Ninguno con 2 toques o más' : 'Desactivados'}</div>`;
-    if (st.autos.length) $('autos').innerHTML += '<p class="nota">Solo los más cercanos: 2 resistencias por encima y 2 soportes por debajo, de 3 toques o más.</p>';
+    if (st.autos.length) $('autos').innerHTML += '<p class="nota">Trincheras: zonas donde el precio se ha parado varias veces. Solo las más cercanas: 2 por encima y 2 por debajo, de 3 toques o más. «Defendida» = veces que después el precio se alejó con fuerza.</p>';
   }
   $('autos').addEventListener('click', e => {
     const k = e.target.dataset && e.target.dataset.k; if (k == null) return;
@@ -754,6 +785,22 @@
           }
         }
         velaMarcada(s);
+        const usadas = [];
+        st.autos.forEach(z => {                                // trincheras: franja de la zona
+          const y1 = velas.priceToCoordinate(z.hi), y2 = velas.priceToCoordinate(z.lo); if (y1 == null || y2 == null) return;
+          const ctx = s.context, W = s.mediaSize.width, h = Math.max(3, y2 - y1), col = z.sop ? SOP : RES;
+          ctx.save(); ctx.fillStyle = col; ctx.globalAlpha = Math.min(0.22, 0.06 + 0.025 * z.n); ctx.fillRect(0, y1 - (h === 3 ? 1.5 : 0), W, h);
+          ctx.globalAlpha = 0.9; ctx.strokeStyle = col; ctx.lineWidth = z.n >= 4 ? 1.5 : 1; ctx.setLineDash([5, 4]);
+          ctx.beginPath(); ctx.moveTo(0, y1); ctx.lineTo(W, y1); ctx.moveTo(0, y1 + (h === 3 ? 0 : h)); ctx.lineTo(W, y1 + (h === 3 ? 0 : h)); ctx.stroke();
+          ctx.setLineDash([]); ctx.font = '600 10.5px sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'right';
+          let yt = z.sop ? y1 + h + 11 : y1 - 4;                 // que las etiquetas no se pisen
+          for (let k = 0; k < 6 && usadas.some(u => Math.abs(u - yt) < 12); k++) yt += z.sop ? 12 : -12;
+          usadas.push(yt); ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(255,255,255,.85)';
+          const txt = `${z.sop ? 'SOPORTE' : 'RESISTENCIA'} ${textoZona(z)} · ${z.n} toques · defendida ${z.def}`, tw = ctx.measureText(txt).width;
+          ctx.fillRect(W - 92 - tw, yt - 10, tw + 4, 13); ctx.fillStyle = col;
+          ctx.fillText(txt, W - 90, yt);
+          ctx.restore();
+        });
         st.alertas.filter(a => a.symbol === st.sym).forEach(a => {          // zona a vigilar (config/alertas.json), en todas las temporalidades
           const y1 = velas.priceToCoordinate(a.hasta), y2 = velas.priceToCoordinate(a.desde); if (y1 == null || y2 == null) return;
           const ctx = s.context, W = s.mediaSize.width, h = Math.max(2, y2 - y1);
@@ -1170,7 +1217,8 @@
 
   async function iniciar() {
     try { st.lista = await json('config/tickers.json'); } catch (e) { return fallo('No se pudo leer config/tickers.json'); }
-    const pedido = new URLSearchParams(location.search).get('s') || store.get('sym', null);
+    const Q = new URLSearchParams(location.search), pedido = Q.get('s') || store.get('sym', null);
+    if (Q.get('tf') && TFS.includes(Q.get('tf'))) st.tf = Q.get('tf');
     try { (await json('data/scan.json')).valores.forEach(x => { st.scan[x.symbol] = x; }); } catch (e) {}
     try { st.alertas = await json('config/alertas.json'); } catch (e) {}
     window.__wyk = { st, zigzag, tendencia, chart };   // para pruebas

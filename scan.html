@@ -44,6 +44,15 @@
   td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
   td a { color: var(--txt); font-weight: 600; text-decoration: none; } td a:hover { text-decoration: underline; }
   .vacio { color: var(--dim); padding: 10px 0; }
+  .sel { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
+  .sel.top { border-color: var(--up); box-shadow: 0 0 0 1px var(--up) inset; }
+  .nota10 { margin-left: auto; font-size: 20px; font-weight: 700; }
+  .paso { display: flex; gap: 7px; font-size: 13px; margin: 2px 0; } .paso > b { width: 14px; flex: none; text-align: center; }
+  .paso.si > b { color: var(--up); } .paso.medio > b { color: var(--amber); } .paso.no > b { color: var(--down); }
+  .paso i { font-style: normal; font-weight: 600; }
+  .esc { font-size: 13px; margin: 6px 0; padding-left: 18px; }
+  table.ent { margin: 6px 0; } table.ent td, table.ent th { padding: 3px 6px; font-size: 12.5px; }
+  tr.ok td:first-child { color: var(--up); font-weight: 700; }
   footer { color: var(--dim); font-size: 12px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; }
 </style>
 </head>
@@ -61,6 +70,10 @@
   <h2>Alertas de precio <small id="nAle"></small></h2>
   <p class="exp">Zonas que has pedido vigilar. El corte cuenta con el <b>cierre diario</b> al otro lado de la zona.</p>
   <div id="ale"></div>
+
+  <h2>Selección: los mejores escenarios según los cursos <small id="nSel"></small></h2>
+  <p class="exp">Cada valor pasa por los <b>5 pasos de Schroeder</b>: 1) a favor de la línea de menor resistencia (mensual, semanal y diario), 2) fuerza frente a su índice, 3) causa (rango o acumulación; trinchera defendida muchas veces), 4) sitio (en la trinchera de soporte, en el back o pegado a la resistencia que hay que romper) y 5) timing (spring con intención, rotura con intención, corrección sin volumen). ✓ = 2 puntos, ½ = 1. Las <b>trincheras</b> son zonas, no precios exactos: toques, veces defendida y volumen en los toques. Entradas: <b>agresiva</b> tras el spring, <b>conservadora</b> si rompe la trinchera de arriba, <b>60 min</b> para afinar con la resistencia intradía. ● = cumple lo que funcionó en la prueba histórica (2018-2026: rotura de trinchera fuerte +0,43R de media; spring con intención +0,26R). Siempre hay probabilidad de perder: el stop es parte de la entrada.</p>
+  <div class="rejilla" id="sel"></div>
 
   <h2>Posibles entradas: compra tras corrección <small id="nEnt"></small></h2>
   <p class="exp">Tendencia alcista en semanal y diario; el precio corrige entre el 38,2 % y el 70 % del último impulso <b>sin volumen</b> (el impulso sí lo tuvo) y deja de hacer mínimos («se queda sin presión bajista»). Señales de hoy y de las 4 sesiones anteriores que siguen vivas.</p>
@@ -162,8 +175,28 @@
       <td class="n up">${nf(e.obj1)}<br><span style="font-size:12px">${pc(e.entrada, e.obj1)}</span></td>
       <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}&sl=${e.stop}&nota=${encodeURIComponent(`${e.tipo} ${nf(e.nivel)} (${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)})`)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
   }
+  const IC = { si: '✓', medio: '½', no: '✗' }, PASOS = ['Menor resistencia', 'Fuerza', 'Causa', 'Sitio', 'Timing'];
+  const cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
+  function tarjetaSel(x) {
+    const S = x.sel, m = S.mejor, u = encodeURIComponent(x.symbol);
+    return `<div class="sel ${S.nota >= 9 ? 'top' : ''}">
+      <div class="cab"><b>${x.symbol}</b><span class="nom">${x.nombre}</span><span class="pre">${nf(x.cierre)} <span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></span>
+        <span class="nota10 ${S.nota >= 8 ? 'up' : 'flat'}">${S.nota}/10</span></div>
+      ${S.pasos.map((p, k) => `<div class="paso ${p.estado}"><b>${IC[p.estado]}</b><span><i>${PASOS[k]}:</i> ${p.txt}</span></div>`).join('')}
+      ${S.escenario.length ? `<ul class="esc">${S.escenario.map(e => `<li>${e}</li>`).join('')}</ul>` : ''}
+      ${S.entradas.length ? `<table class="ent"><tr><th></th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>B/R</th></tr>${S.entradas.map(e =>
+        `<tr class="${e.valida ? 'ok' : ''}" title="${e.nota} · objetivo: ${e.obj_txt}"><td>${e.valida ? '● ' : '○ '}${cap1(e.tipo)}</td><td class="n"><b>${nf(e.entrada)}</b></td>
+         <td class="n down">${nf(e.stop)} <small>−${nf(e.riesgo_pct)} %</small></td><td class="n up">${nf(e.obj)}</td><td class="n">${nf(e.br)}</td></tr>`).join('')}</table>` : ''}
+      ${S.l60 ? `<div style="font-size:12.5px;color:var(--dim)">Volumen 60 min (2 últimas sesiones): <b class="${S.l60.tono === 'favor' ? 'up' : S.l60.tono === 'contra' ? 'down' : ''}">${S.l60.txt}</b></div>` : ''}
+      <div style="margin-top:8px"><a class="btn" href="index.html?s=${u}&tf=1d">Diario</a> <a class="btn" href="index.html?s=${u}&tf=60m">60 min</a> <a class="btn" href="index.html?s=${u}&tf=30m">30 min</a>
+        ${m ? `<a class="btn" href="cartera.html?s=${u}&sl=${m.stop}&nota=${encodeURIComponent(`${cap1(m.tipo)}: entrada ${nf(m.entrada)}, stop ${nf(m.stop)}, objetivo ${nf(m.obj)}`)}">Compra ficticia</a>` : ''}</div></div>`;
+  }
   function pintar() {
     const D = datos.filter(x => mercado === 'Todos' || (x.indices || []).includes(mercado));
+    const sel = D.filter(x => x.sel && !x.sel.descartada && x.sel.nota >= 7)
+      .sort((a, b) => b.sel.nota - a.sel.nota || (b.sel.mejor && b.sel.mejor.valida) - (a.sel.mejor && a.sel.mejor.valida) || ((b.sel.mejor || {}).br || 0) - ((a.sel.mejor || {}).br || 0)).slice(0, 8);
+    $('nSel').textContent = `(${sel.length})`;
+    $('sel').innerHTML = sel.map(tarjetaSel).join('') || '<div class="vacio">Ningún valor con 7/10 o más hoy.</div>';
     const ent = D.filter(x => x.entrada).sort((a, b) => a.entrada.hace - b.entrada.hace || b.entrada.calidad - a.entrada.calidad);
     const vig = D.filter(x => x.vigilar).sort((a, b) => (b.vigilar.seca - a.vigilar.seca) || Math.abs(a.vigilar.retr - 50) - Math.abs(b.vigilar.retr - 50));
     $('nEnt').textContent = `(${ent.length})`; $('nVig').textContent = `(${vig.length})`;
