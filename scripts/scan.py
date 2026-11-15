@@ -380,6 +380,37 @@ def analizar(info):
     return r
 
 
+def alertas_precio():
+    """Alertas de precio puestas a mano en config/alertas.json (zona desde-hasta, sentido sube/baja).
+    Mira el cierre diario (corte confirmado = cierre al otro lado de la zona)."""
+    f = ROOT / "config" / "alertas.json"
+    if not f.exists():
+        return []
+    out = []
+    for al in json.loads(f.read_text()):
+        d = cargar(al["symbol"], "1d")
+        if not d:
+            continue
+        lo, hi, sube = al["desde"], al["hasta"], al.get("sentido", "sube") == "sube"
+        c, h, l, t = d["c"][-1], d["h"][-1], d["l"][-1], d["t"][-1]
+        # ultimas 5 sesiones: ¿ha cerrado ya al otro lado de la zona?
+        cortado = None
+        for k in range(1, min(6, d["n"]) + 1):
+            if (d["c"][-k] > hi) if sube else (d["c"][-k] < lo):
+                cortado = d["t"][-k]
+            else:
+                break
+        if cortado:
+            estado, txt = "cortado", f"{'Cierra por encima de' if sube else 'Cierra por debajo de'} {fm(hi if sube else lo)} desde el {cortado[8:10]}/{cortado[5:7]} (cierre {fm(c)})"
+        elif (h >= lo) if sube else (l <= hi):
+            estado, txt = "en zona", f"Toca la zona sin cerrar al otro lado (máx. {fm(h)}, mín. {fm(l)}, cierre {fm(c)})"
+        else:
+            dist = (lo / c - 1) * 100 if sube else (1 - hi / c) * 100
+            estado, txt = "esperando", f"A {fm(abs(dist))} % de la zona (cierre {fm(c)})"
+        out.append(dict(al, estado=estado, txt=txt, fecha=t, cierre=c))
+    return out
+
+
 def main():
     lista = json.loads(CONFIG.read_text())
     out, errores = [], 0
@@ -392,7 +423,7 @@ def main():
             errores += 1
             print(f"ERROR scan {info['symbol']}: {e}", file=sys.stderr)
     out.sort(key=lambda x: (-x["candidata"], -x["puntos"], x["symbol"]))
-    doc = {"generado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "valores": out}
+    doc = {"generado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "valores": out, "alertas": alertas_precio()}
     (DATA / "scan.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
     cand = [x["symbol"] for x in out if x["candidata"]]
     ent = [x["symbol"] for x in out if x.get("entrada")]

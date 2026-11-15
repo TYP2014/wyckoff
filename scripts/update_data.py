@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Descarga velas OHLC + volumen y las guarda en data/<SIMBOLO>/<temporalidad>.json
 
-Temporalidades: 60m (historico gratuito ~2 anos, se va acumulando), 1d, 1wk, 1mo.
+Temporalidades: 60m (historico gratuito ~2 anos, se va acumulando), 1d, 1wk, 1mo;
+5m (Yahoo solo da ~60 dias; se va acumulando) y 15m / 30m agrupados desde el 5m.
 Semanal y mensual se calculan a partir del diario para que todo cuadre.
 
 Uso:  python scripts/update_data.py            (todos los valores de config/tickers.json)
@@ -29,7 +30,8 @@ def proveedor_yfinance(symbol: str, interval: str) -> pd.DataFrame:
     import yfinance as yf
 
     # 60m: Yahoo da como mucho ~730 dias; en valores recientes hay que pedir menos
-    periodos = ["730d", "1y", "6mo", "3mo", "1mo"] if interval == "60m" else ["max"]
+    periodos = (["730d", "1y", "6mo", "3mo", "1mo"] if interval == "60m"
+                else ["60d", "30d", "5d"] if interval == "5m" else ["max"])
     ultimo = None
     for intento in range(3):  # Yahoo a veces corta: reintentos con espera
         for period in periodos:
@@ -100,9 +102,13 @@ def guardar(symbol: str, tf: str, barras: list) -> None:
     (carpeta / f"{tf}.json").write_text(json.dumps(doc, separators=(",", ":")))
 
 
-def fusionar_60m(symbol: str, nuevas: list) -> list:
-    """Une las barras nuevas con las ya guardadas: el historico de 60m crece con el tiempo."""
-    f = DATA / symbol / "60m.json"
+# Maximo de barras guardadas por temporalidad intradia (para no llenar el repositorio)
+TOPE = {"60m": 100000, "30m": 6000, "15m": 8000, "5m": 12000}
+
+
+def fusionar_60m(symbol: str, nuevas: list, tf: str = "60m") -> list:
+    """Une las barras nuevas con las ya guardadas: el historico intradia crece con el tiempo."""
+    f = DATA / symbol / f"{tf}.json"
     por_t = {}
     if f.exists():
         try:
@@ -111,7 +117,13 @@ def fusionar_60m(symbol: str, nuevas: list) -> list:
             por_t = {}
     for b in nuevas:
         por_t[b[0]] = b
-    return [por_t[t] for t in sorted(por_t)]
+    return [por_t[t] for t in sorted(por_t)][-TOPE[tf]:]
+
+
+def agrupar_intradia(df: pd.DataFrame, minutos: int) -> pd.DataFrame:
+    agg = {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
+    g = df.resample(f"{minutos}min", label="left", closed="left", origin="start_day").agg(agg)
+    return g.dropna(subset=["Open"])
 
 
 def actualizar(symbol: str) -> None:
@@ -140,8 +152,19 @@ def actualizar(symbol: str) -> None:
     if barras_60:
         guardar(symbol, "60m", barras_60)
 
+    # 5 / 15 / 30 min: una sola descarga de 5 min y se agrupa (asi las tres cuadran)
+    cortos = {}
+    try:
+        h5 = limpiar(sin_zona(PROVEEDOR(symbol, "5m")))
+        for tf, df in (("5m", h5), ("15m", agrupar_intradia(h5, 15)), ("30m", agrupar_intradia(h5, 30))):
+            cortos[tf] = fusionar_60m(symbol, a_barras(df, True), tf)
+            guardar(symbol, tf, cortos[tf])
+    except Exception as e:
+        print(f"AVISO {symbol}: 5m no disponible ({e})", file=sys.stderr)
+
     print(f"OK {symbol}: diario {len(diario)} barras "
-          f"({diario.index[0].date()} -> {diario.index[-1].date()}), 60m {len(barras_60)} barras")
+          f"({diario.index[0].date()} -> {diario.index[-1].date()}), 60m {len(barras_60)} barras, "
+          f"5m {len(cortos.get('5m', []))}, 15m {len(cortos.get('15m', []))}, 30m {len(cortos.get('30m', []))}")
 
 
 def main() -> int:
