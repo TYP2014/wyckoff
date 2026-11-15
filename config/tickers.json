@@ -77,5 +77,6 @@
   {"symbol": "SLR.MC", "nombre": "Solaria", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]},
   {"symbol": "TEF.MC", "nombre": "Telefónica", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]},
   {"symbol": "TRE.MC", "nombre": "Técnicas Reunidas", "mercado": "España", "divisa": "EUR", "indices": ["Mercado Continuo"]},
-  {"symbol": "UNI.MC", "nombre": "Unicaja", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]}
+  {"symbol": "UNI.MC", "nombre": "Unicaja", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]},
+  {"symbol": "AOS", "nombre": "A. O. Smith", "mercado": "USA", "divisa": "USD", "indices": ["S&P 500"]}
 ]
