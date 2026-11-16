@@ -10,28 +10,28 @@
     --up: #12967e; --down: #e0443e; --amber: #c98500; --accent: #4c8dff; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--txt);
-    font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    font: 16.5px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 20px;
     border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
-  header h1 { font-size: 18px; margin: 0; }
-  header .fecha { color: var(--dim); font-size: 13px; }
+  header h1 { font-size: 21px; margin: 0; }
+  header .fecha { color: var(--dim); font-size: 15.5px; }
   header .der { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   button, a.btn { font: inherit; color: var(--txt); background: #fff; border: 1px solid var(--line); border-radius: 6px;
     padding: 5px 11px; cursor: pointer; text-decoration: none; display: inline-block; }
   button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  main { max-width: 1250px; margin: 0 auto; padding: 14px 20px 40px; }
-  h2 { font-size: 15px; margin: 26px 0 4px; }
+  main { max-width: 1720px; margin: 0 auto; padding: 14px 20px 40px; }
+  h2 { font-size: 17.5px; margin: 26px 0 4px; }
   h2 small { color: var(--dim); font-weight: 400; margin-left: 6px; }
-  p.exp { color: var(--dim); font-size: 13px; margin: 0 0 10px; }
-  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+  p.exp { color: var(--dim); font-size: 15.5px; margin: 0 0 10px; }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 12px; }
   .tarjeta { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
   .tarjeta.cand { border-color: var(--up); box-shadow: 0 0 0 1px var(--up) inset; }
   .cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .cab b { font-size: 16px; } .cab .nom { color: var(--dim); }
+  .cab b { font-size: 19px; } .cab .nom { color: var(--dim); }
   .cab .pre { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
   .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--amber); }
   .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
-  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 14px; }
   .chip b { color: var(--dim); font-weight: 600; margin-right: 4px; }
   .chip.fase { background: var(--panel); font-weight: 600; }
   .chip.pts { background: #1c2330; color: #fff; border-color: #1c2330; }
@@ -39,21 +39,21 @@
   li.av { color: var(--accent); list-style: "→ "; font-weight: 600; }
   li.malo { color: var(--down); }
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 12px; color: var(--dim); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { text-align: left; font-size: 14px; color: var(--dim); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
   td { padding: 6px 8px; border-bottom: 1px solid #eef1f4; vertical-align: top; }
   td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
   td a { color: var(--txt); font-weight: 600; text-decoration: none; } td a:hover { text-decoration: underline; }
   .vacio { color: var(--dim); padding: 10px 0; }
   .sel { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
   .sel.top { border-color: var(--up); box-shadow: 0 0 0 1px var(--up) inset; }
-  .nota10 { margin-left: auto; font-size: 20px; font-weight: 700; }
-  .paso { display: flex; gap: 7px; font-size: 13px; margin: 2px 0; } .paso > b { width: 14px; flex: none; text-align: center; }
+  .nota10 { margin-left: auto; font-size: 23.5px; font-weight: 700; }
+  .paso { display: flex; gap: 7px; font-size: 15.5px; margin: 2px 0; } .paso > b { width: 14px; flex: none; text-align: center; }
   .paso.si > b { color: var(--up); } .paso.medio > b { color: var(--amber); } .paso.no > b { color: var(--down); }
   .paso i { font-style: normal; font-weight: 600; }
-  .esc { font-size: 13px; margin: 6px 0; padding-left: 18px; }
-  table.ent { margin: 6px 0; } table.ent td, table.ent th { padding: 3px 6px; font-size: 12.5px; }
+  .esc { font-size: 15.5px; margin: 6px 0; padding-left: 18px; }
+  table.ent { margin: 6px 0; } table.ent td, table.ent th { padding: 3px 6px; font-size: 15px; }
   tr.ok td:first-child { color: var(--up); font-weight: 700; }
-  footer { color: var(--dim); font-size: 12px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; }
+  footer { color: var(--dim); font-size: 14px; margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; }
 </style>
 </head>
 <body>
@@ -132,7 +132,7 @@
         ${x.avisos.map(a => `<li class="av">${a.txt.replace('.', ',')}</li>`).join('')}</ul>
     <a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}">Ver gráfico</a>
     <a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}">Compra ficticia</a></div>`;
-  const fila = (x, texto) => `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
+  const fila = (x, texto) => `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:14px">${x.nombre}</span></td>
     <td class="n">${nf(x.cierre)}<br><span class="${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</span></td>
     <td>${texto}</td>
     <td><span class="${cls(x.tendM)}">${cap(x.tendM)}</span> / <span class="${cls(x.tendS)}">${cap(x.tendS)}</span></td></tr>`;
@@ -142,37 +142,37 @@
   function tablaEntradas(L) {
     if (!L.length) return '<div class="vacio">Ninguna señal. Es normal: salen pocas (en la prueba histórica, una cada 8 sesiones de media con estos 79 valores).</div>';
     return `<table><tr><th>Valor</th><th>Señal</th><th>Corrección</th><th>Volumen</th><th>Entrada</th><th>Stop</th><th>Objetivo 1</th><th>Objetivo 2</th><th>Beneficio/riesgo</th><th></th></tr>` +
-      L.map(x => { const e = x.entrada; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
-      <td class="n">${e.hace ? `hace ${e.hace} ses.` : '<b class="up">HOY</b>'}<br><span style="color:var(--dim);font-size:12px">${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</span></td>
-      <td class="n">${nf(e.retr)} % de ${nf(e.origen)} → ${nf(e.techo)}<br><span style="color:var(--dim);font-size:12px">mínimo ${nf(e.minimo)}</span></td>
+      L.map(x => { const e = x.entrada; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:14px">${x.nombre}</span></td>
+      <td class="n">${e.hace ? `hace ${e.hace} ses.` : '<b class="up">HOY</b>'}<br><span style="color:var(--dim);font-size:14px">${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</span></td>
+      <td class="n">${nf(e.retr)} % de ${nf(e.origen)} → ${nf(e.techo)}<br><span style="color:var(--dim);font-size:14px">mínimo ${nf(e.minimo)}</span></td>
       <td class="n">impulso ${nf(e.vol_imp)}×<br>corrección ${nf(e.vol_cor)}×</td>
-      <td class="n"><b>${nf(e.entrada)}</b>${e.hace ? `<br><span style="font-size:12px">hoy ${nf(x.cierre)}</span>` : ''}</td>
-      <td class="n down">${nf(e.stop)}<br><span style="font-size:12px">−${nf(e.riesgo_pct)} %</span></td>
-      <td class="n up">${nf(e.obj1)}<br><span style="font-size:12px">${pc(e.entrada, e.obj1)}</span></td>
-      <td class="n up">${nf(e.obj2)}<br><span style="font-size:12px">${pc(e.entrada, e.obj2)}</span></td>
+      <td class="n"><b>${nf(e.entrada)}</b>${e.hace ? `<br><span style="font-size:14px">hoy ${nf(x.cierre)}</span>` : ''}</td>
+      <td class="n down">${nf(e.stop)}<br><span style="font-size:14px">−${nf(e.riesgo_pct)} %</span></td>
+      <td class="n up">${nf(e.obj1)}<br><span style="font-size:14px">${pc(e.entrada, e.obj1)}</span></td>
+      <td class="n up">${nf(e.obj2)}<br><span style="font-size:14px">${pc(e.entrada, e.obj2)}</span></td>
       <td class="n">${nf(e.rr1)} / <b>${nf(e.rr2)}</b></td>
       <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}&sl=${e.stop}&nota=${encodeURIComponent(`Señal ${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}: corrección ${nf(e.retr)} %, stop ${nf(e.stop)}, obj. 1 ${nf(e.obj1)}`)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
   }
   function tablaVigilar(L) {
     if (!L.length) return '<div class="vacio">Ninguno</div>';
     return `<table><tr><th>Valor</th><th>Cierre</th><th>Impulso</th><th>Retroceso</th><th>Zona 38,2-61,8 %</th><th>Volumen corrección</th></tr>` +
-      L.map(x => { const g = x.vigilar; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
+      L.map(x => { const g = x.vigilar; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:14px">${x.nombre}</span></td>
       <td class="n">${nf(x.cierre)}</td><td class="n">${nf(g.origen)} → ${nf(g.techo)}</td>
-      <td class="n">${nf(g.retr)} %<br><span style="color:var(--dim);font-size:12px">mínimo ${nf(g.minimo)}</span></td>
+      <td class="n">${nf(g.retr)} %<br><span style="color:var(--dim);font-size:14px">mínimo ${nf(g.minimo)}</span></td>
       <td class="n">${nf(g.z618)} – ${nf(g.z382)}</td>
       <td class="n">${g.vol_cor == null ? '—' : nf(g.vol_cor) + '× la media'}<br>${g.seca ? '<span class="up">volumen seco</span>' : (g.vol_imp != null && g.vol_imp <= g.vol_cor ? '<span class="flat">el impulso tuvo menos volumen</span>' : '<span class="flat">con volumen</span>')}</td></tr>`; }).join('') + '</table>';
   }
   function tablaPatron(L) {
     if (!L.length) return '<div class="vacio">Ninguno. Salen pocos: en la prueba histórica, unos 34 al año entre los dos patrones con estos 79 valores.</div>';
     return `<table><tr><th>Valor</th><th>Señal</th><th>Nivel</th><th>Suceso (engaño o rotura)</th><th>Vuelta / test</th><th>Entrada</th><th>Stop</th><th>Objetivo 1</th><th></th></tr>` +
-      L.map(x => { const e = x.patron; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:12px">${x.nombre}</span></td>
-      <td class="n"><b>${e.tipo}</b><br>${e.hace ? `hace ${e.hace} ses.` : '<b class="up">HOY</b>'} <span style="color:var(--dim);font-size:12px">${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</span></td>
-      <td class="n">${nf(e.nivel)}<br><span style="color:var(--dim);font-size:12px">${e.toques} toques</span></td>
-      <td class="n">${e.suceso ? e.suceso.slice(8,10) + '/' + e.suceso.slice(5,7) : ''} mín. ${nf(e.minimo)}<br><span style="font-size:12px">volumen ${nf(e.vol_suceso)}× la media</span></td>
-      <td class="n">volumen ${nf(e.vol_vuelta)}×<br><span class="up" style="font-size:12px">sin oferta</span></td>
-      <td class="n"><b>${nf(e.entrada)}</b>${e.hace ? `<br><span style="font-size:12px">hoy ${nf(x.cierre)}</span>` : ''}</td>
-      <td class="n down">${nf(e.stop)}<br><span style="font-size:12px">−${nf(e.riesgo_pct)} %</span></td>
-      <td class="n up">${nf(e.obj1)}<br><span style="font-size:12px">${pc(e.entrada, e.obj1)}</span></td>
+      L.map(x => { const e = x.patron; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:14px">${x.nombre}</span></td>
+      <td class="n"><b>${e.tipo}</b><br>${e.hace ? `hace ${e.hace} ses.` : '<b class="up">HOY</b>'} <span style="color:var(--dim);font-size:14px">${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)}</span></td>
+      <td class="n">${nf(e.nivel)}<br><span style="color:var(--dim);font-size:14px">${e.toques} toques</span></td>
+      <td class="n">${e.suceso ? e.suceso.slice(8,10) + '/' + e.suceso.slice(5,7) : ''} mín. ${nf(e.minimo)}<br><span style="font-size:14px">volumen ${nf(e.vol_suceso)}× la media</span></td>
+      <td class="n">volumen ${nf(e.vol_vuelta)}×<br><span class="up" style="font-size:14px">sin oferta</span></td>
+      <td class="n"><b>${nf(e.entrada)}</b>${e.hace ? `<br><span style="font-size:14px">hoy ${nf(x.cierre)}</span>` : ''}</td>
+      <td class="n down">${nf(e.stop)}<br><span style="font-size:14px">−${nf(e.riesgo_pct)} %</span></td>
+      <td class="n up">${nf(e.obj1)}<br><span style="font-size:14px">${pc(e.entrada, e.obj1)}</span></td>
       <td><a class="btn" href="cartera.html?s=${encodeURIComponent(x.symbol)}&sl=${e.stop}&nota=${encodeURIComponent(`${e.tipo} ${nf(e.nivel)} (${e.fecha.slice(8,10)}/${e.fecha.slice(5,7)})`)}">Compra ficticia</a></td></tr>`; }).join('') + '</table>';
   }
   const IC = { si: '✓', medio: '½', no: '✗' }, PASOS = ['Menor resistencia', 'Fuerza', 'Causa', 'Sitio', 'Timing'];
@@ -187,7 +187,7 @@
       ${S.entradas.length ? `<table class="ent"><tr><th></th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>B/R</th></tr>${S.entradas.map(e =>
         `<tr class="${e.valida ? 'ok' : ''}" title="${e.nota} · objetivo: ${e.obj_txt}"><td>${e.valida ? '● ' : '○ '}${cap1(e.tipo)}</td><td class="n"><b>${nf(e.entrada)}</b></td>
          <td class="n down">${nf(e.stop)} <small>−${nf(e.riesgo_pct)} %</small></td><td class="n up">${nf(e.obj)}</td><td class="n">${nf(e.br)}</td></tr>`).join('')}</table>` : ''}
-      ${S.l60 ? `<div style="font-size:12.5px;color:var(--dim)">Volumen 60 min (2 últimas sesiones): <b class="${S.l60.tono === 'favor' ? 'up' : S.l60.tono === 'contra' ? 'down' : ''}">${S.l60.txt}</b></div>` : ''}
+      ${S.l60 ? `<div style="font-size:15px;color:var(--dim)">Volumen 60 min (2 últimas sesiones): <b class="${S.l60.tono === 'favor' ? 'up' : S.l60.tono === 'contra' ? 'down' : ''}">${S.l60.txt}</b></div>` : ''}
       <div style="margin-top:8px"><a class="btn" href="index.html?s=${u}&tf=1d">Diario</a> <a class="btn" href="index.html?s=${u}&tf=60m">60 min</a> <a class="btn" href="index.html?s=${u}&tf=30m">30 min</a>
         ${m ? `<a class="btn" href="cartera.html?s=${u}&sl=${m.stop}&nota=${encodeURIComponent(`${cap1(m.tipo)}: entrada ${nf(m.entrada)}, stop ${nf(m.stop)}, objetivo ${nf(m.obj)}`)}">Compra ficticia</a>` : ''}</div></div>`;
   }
@@ -224,8 +224,8 @@
     $('ale').innerHTML = A.length ? `<table><tr><th>Valor</th><th>Zona</th><th>Estado</th><th>Nota</th></tr>` + A.map(a => `<tr>
       <td><a href="index.html?s=${encodeURIComponent(a.symbol)}">${a.symbol}</a></td>
       <td class="n">${nf(a.desde)} – ${nf(a.hasta)} ${a.sentido === 'baja' ? '↓' : '↑'}</td>
-      <td><b class="${col[a.estado] || ''}">${a.estado === 'cortado' ? 'CORTADA' : a.estado === 'en zona' ? 'En la zona' : 'Esperando'}</b><br><span style="font-size:12px">${a.txt}</span></td>
-      <td style="font-size:12px">${a.nota || ''}</td></tr>`).join('') + '</table>' : '<div class="vacio">Ninguna</div>';
+      <td><b class="${col[a.estado] || ''}">${a.estado === 'cortado' ? 'CORTADA' : a.estado === 'en zona' ? 'En la zona' : 'Esperando'}</b><br><span style="font-size:14px">${a.txt}</span></td>
+      <td style="font-size:14px">${a.nota || ''}</td></tr>`).join('') + '</table>' : '<div class="vacio">Ninguna</div>';
     datos = j.valores; datos.forEach(x => { x.indices = ind[x.symbol] || [x.mercado]; });
     if (mercado !== 'Todos' && !datos.some(x => x.indices.includes(mercado))) mercado = 'Todos';
     $('fecha').textContent = `${datos.length} valores · calculado el ${new Date(j.generado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
