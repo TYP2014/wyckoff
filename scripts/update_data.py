@@ -50,6 +50,82 @@ def proveedor_yfinance(symbol: str, interval: str) -> pd.DataFrame:
 
 PROVEEDOR = proveedor_yfinance
 
+
+def proveedor_tiingo(symbol: str) -> pd.DataFrame:
+    """Velas diarias de Tiingo (solo EE. UU.; plan gratuito con registro). Clave en la variable TIINGO_TOKEN.
+
+    Tiingo da el precio bruto y el factor de split de cada día; aquí se ajusta solo por splits
+    (como Yahoo con auto_adjust=False) para que el histórico cuadre. El volumen se ajusta igual.
+    """
+    import os
+    import requests
+
+    token = os.environ.get("TIINGO_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("sin TIINGO_TOKEN")
+    url = f"https://api.tiingo.com/tiingo/daily/{symbol.lower()}/prices"
+    ultimo = None
+    for intento in range(3):
+        try:
+            r = requests.get(url, params={"startDate": "1980-01-01", "token": token}, timeout=60)
+            if r.status_code == 200:
+                filas = r.json()
+                if filas:
+                    break
+                ultimo = RuntimeError("sin datos")
+            else:
+                ultimo = RuntimeError(f"HTTP {r.status_code}: {r.text[:120]}")
+        except Exception as e:
+            ultimo = e
+        time.sleep(5 * (intento + 1))
+    else:
+        raise RuntimeError(f"Tiingo {symbol}: {ultimo}")
+    df = pd.DataFrame(filas)
+    df.index = pd.DatetimeIndex(pd.to_datetime(df["date"]).dt.tz_localize(None).dt.normalize().values)
+    # factor acumulado de los splits posteriores a cada día
+    sf = df["splitFactor"].astype(float).fillna(1.0)
+    fut = sf[::-1].cumprod()[::-1].shift(-1).fillna(1.0)
+    out = pd.DataFrame({
+        "Open": df["open"] / fut, "High": df["high"] / fut, "Low": df["low"] / fut,
+        "Close": df["close"] / fut, "Volume": (df["volume"] * fut).round(),
+    }, index=df.index)
+    return out
+
+
+def es_usa(symbol: str) -> bool:
+    return "." not in symbol and not symbol.startswith("^")
+
+
+def diario_usa(symbol: str) -> pd.DataFrame:
+    """EE. UU.: Tiingo si hay clave (más fiable); Yahoo si no hay clave, si falla o si va más atrasado."""
+    yh = None
+    try:
+        yh = limpiar(sin_zona(proveedor_yfinance(symbol, "1d")))
+        yh.index = yh.index.normalize()
+    except Exception as e:
+        print(f"AVISO {symbol}: Yahoo diario no disponible ({e})", file=sys.stderr)
+    try:
+        ti = limpiar(proveedor_tiingo(symbol))
+    except Exception as e:
+        if "sin TIINGO_TOKEN" not in str(e):
+            print(f"AVISO {symbol}: Tiingo no disponible, se usa Yahoo ({e})", file=sys.stderr)
+        if yh is None:
+            raise
+        return yh
+    if yh is not None and len(yh):
+        # comparación con Yahoo en las últimas 250 sesiones comunes (para validar la fuente)
+        com = ti.index.intersection(yh.index)[-250:]
+        if len(com):
+            dc = ((ti.loc[com, "Close"] / yh.loc[com, "Close"] - 1).abs() * 100)
+            rv = (ti.loc[com, "Volume"] / yh.loc[com, "Volume"].replace(0, float("nan")))
+            print(f"CMP {symbol}: {len(com)} sesiones; cierre dif. media {dc.mean():.3f} % (máx {dc.max():.2f} %); "
+                  f"volumen Tiingo/Yahoo mediana {rv.median():.3f} (p10 {rv.quantile(.1):.3f}, p90 {rv.quantile(.9):.3f})")
+        if yh.index[-1] > ti.index[-1]:
+            print(f"AVISO {symbol}: Tiingo llega hasta {ti.index[-1].date()} y Yahoo hasta {yh.index[-1].date()}; se usa Yahoo",
+                  file=sys.stderr)
+            return yh
+    return ti
+
 # -------------------------------------------------------------------- utiles
 
 
@@ -127,7 +203,10 @@ def agrupar_intradia(df: pd.DataFrame, minutos: int) -> pd.DataFrame:
 
 
 def actualizar(symbol: str) -> None:
-    diario = limpiar(sin_zona(PROVEEDOR(symbol, "1d")))
+    if es_usa(symbol):
+        diario = diario_usa(symbol)
+    else:
+        diario = limpiar(sin_zona(PROVEEDOR(symbol, "1d")))
     if len(diario) < 50:
         raise RuntimeError(f"{symbol}: datos diarios insuficientes ({len(diario)} barras)")
     diario.index = diario.index.normalize()
