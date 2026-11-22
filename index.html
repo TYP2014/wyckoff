@@ -191,7 +191,7 @@
     </div>
     <div class="grupo vista">
       <button id="limpio" title="Quita de golpe todo lo automático (soportes/resistencias, Wyckoff, rango, distribución, lectura del volumen, Fibo auto, zigzag) y deja solo velas, volumen y tus dibujos. Otro clic lo devuelve como estaba">Limpio</button>
-      <button id="verPanel" title="Mostrar u ocultar el panel derecho">Panel</button>
+      <button id="verPanel" title="Mostrar u ocultar la columna derecha">Columna</button>
       <button id="full" title="Gráfico a pantalla completa (Esc para salir)">⛶ Gráfico entero</button>
     </div>
   </div>
@@ -205,6 +205,7 @@
       <div id="error"></div>
     </div>
     <aside>
+      <button id="cerrarPanel" title="Esconder esta columna (se vuelve a abrir con el botón Panel)" style="float:right;padding:0 8px;line-height:20px;margin:-4px -4px 0 6px">» Esconder</button>
       <section>
         <h2>5 pasos de Schroeder · <span id="selNota"></span></h2>
         <div id="selPanel" class="vacio">Sin datos del buscador</div>
@@ -1157,6 +1158,7 @@
   const app = document.querySelector('.app');
   const pintarPanel = () => { app.classList.toggle('sinPanel', !!st.sinPanel); $('verPanel').classList.toggle('on', !st.sinPanel); };
   st.sinPanel = store.get('sinPanel', false); pintarPanel();
+  $('cerrarPanel').onclick = () => { st.sinPanel = true; store.set('sinPanel', true); pintarPanel(); };
   $('verPanel').onclick = () => { st.sinPanel = !st.sinPanel; store.set('sinPanel', st.sinPanel); pintarPanel(); };
   const plegadas = store.get('plegadas', {});
   document.querySelectorAll('aside section').forEach((sec, k) => {
