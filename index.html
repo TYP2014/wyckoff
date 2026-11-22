@@ -955,7 +955,8 @@
   function leyenda(x, ant) {
     if (!x) { $('leyenda').textContent = ''; return; }
     const v = ant ? (x.close / ant.close - 1) * 100 : 0, cls = v >= 0 ? 'up' : 'down';
-    $('leyenda').innerHTML = `A <b>${nf(x.open)}</b>Máx <b>${nf(x.high)}</b>Mín <b>${nf(x.low)}</b>C <b>${nf(x.close)}</b>` +
+    const nom = (st.info && st.info.nombre) || '';
+    $('leyenda').innerHTML = `<b style="font-size:13.5px;font-weight:700">${st.sym || ''}</b><span style="color:var(--txt);margin-right:6px">${nom}</span><span style="margin-right:10px">· ${TF_NOMBRE[st.tf] || ''}</span>A <b>${nf(x.open)}</b>Máx <b>${nf(x.high)}</b>Mín <b>${nf(x.low)}</b>C <b>${nf(x.close)}</b>` +
       `<b class="${cls}">${v >= 0 ? '+' : ''}${nf(v)} %</b>Vol <b>${nvol(x.volume)}</b>`;
   }
   chart.subscribeCrosshairMove(p => {
