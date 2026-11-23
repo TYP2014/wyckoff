@@ -310,6 +310,21 @@
   }
 
   // Tendencia por estructura: máximos y mínimos crecientes = alcista; decrecientes = bajista; mixto = rango.
+  function tendenciaMensual(b) {               // mismo criterio que tendencia_mensual() de scripts/scan.py
+    const c = b[b.length - 1].close;
+    for (const mult of [3, 2]) {
+      const piv = zigzag(b, mult), H = piv.filter(p => p.t === 'H'), L = piv.filter(p => p.t === 'L');
+      if (H.length < 2 || L.length < 2) continue;
+      const h1 = H[H.length - 1], h0 = H[H.length - 2], l1 = L[L.length - 1], l0 = L[L.length - 2];
+      const hh = h1.p > h0.p, hl = l1.p > l0.p, medio = (h1.p + l1.p) / 2;
+      if (hh && hl) return 'alcista';
+      if (!hh && !hl) return 'bajista';
+      if (hh && h1.i > l1.i && c > medio) return 'alcista';
+      if (!hl && l1.i > h1.i && c < medio) return 'bajista';
+      return 'rango';
+    }
+    return null;
+  }
   function tendencia(piv) {
     const H = piv.filter(p => p.t === 'H'), L = piv.filter(p => p.t === 'L');
     if (H.length < 2 || L.length < 2) return null;
@@ -365,6 +380,7 @@
         let sv = 0, sr = 0; for (let k = i - 20; k < i; k++) { sv += b[k].volume; sr += b[k].high - b[k].low; }
         vm = sv / 20; rm = sr / 20;
       }
+      if (!x.volume || !vm || !b[i - 1].volume || !b[i - 2].volume) continue;   // sin volumen (algunos índices): no se lee
       const sube = x.close > b[i - 1].close, baja = x.close < b[i - 1].close;
       let t = null;
       // Solo las importantes: volumen de 2 veces la media, o falta de demanda/oferta justo en un nivel de 3 toques o más
@@ -503,6 +519,13 @@
   // ---------- selección: los 5 pasos de Schroeder con trincheras y entradas (calculado en el buscador, diario)
   function pintarSel() {
     const x = st.scan[st.sym], S = x && x.sel;
+    if (x && x.tipo === 'indice') {               // los índices no se puntúan: son el contexto del mercado
+      const TC = t => t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : 'flat';
+      $('selNota').textContent = 'índice'; $('selPanel').className = '';
+      $('selPanel').innerHTML = `<div class="paso"><span>Mensual <b class="${TC(x.tendM)}">${x.tendM || '—'}</b> · Semanal <b class="${TC(x.tendS)}">${x.tendS || '—'}</b> · Diario <b class="${TC(x.tendD)}">${x.tendD || '—'}</b></span></div>
+        <p class="nota">Un índice no se puntúa: sirve para medir el mercado antes de elegir valores. Con las tres temporalidades alcistas, el viento sopla a favor.</p>`;
+      return;
+    }
     if (!S) { $('selPanel').className = 'vacio'; $('selPanel').textContent = 'Sin datos del buscador'; $('selNota').textContent = ''; return; }
     const ic = { si: '✓', medio: '½', no: '✗' }, N = ['Línea de menor resistencia', 'Fuerza del activo', 'Causa', 'Sitio', 'Timing'];
     $('selNota').innerHTML = `<b class="${S.nota >= 8 ? 'up' : S.nota >= 6 ? 'flat' : 'down'}">${S.nota}/10</b>`;
@@ -945,7 +968,7 @@
   // ---------- tendencia por temporalidad
   function pintarTendencias() {
     $('tendencias').innerHTML = TFS.map(tf => {
-      const b = st.datos[tf]; const t = b && b.length ? (tendencia(zigzag(b, st.sens)) || tendencia(zigzag(b, 3)) || tendencia(zigzag(b, 2))) : null;
+      const b = st.datos[tf]; const t = b && b.length ? (tf === '1mo' ? tendenciaMensual(b) : (tendencia(zigzag(b, st.sens)) || tendencia(zigzag(b, 3)) || tendencia(zigzag(b, 2)))) : null;
       const cls = t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : t === 'rango' ? 'flat' : '';
       const txt = t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Sin datos suficientes';
       return `<span class="chip"><b>${TF_NOMBRE[tf]}</b><span class="${cls}">${txt}</span></span>`;
@@ -1207,7 +1230,7 @@
 
   // ---------- buscador de valores
   // ---------- índices: cada grupo por separado (un valor puede estar en varios)
-  const GRUPOS = ['IBEX 35', 'Mercado Continuo', 'Dow Jones', 'Nasdaq 100', 'S&P 500', 'Todos'];
+  const GRUPOS = ['Índices', 'IBEX 35', 'Mercado Continuo', 'Dow Jones', 'Nasdaq 100', 'S&P 500', 'Todos'];
   function enGrupo(g = st.grupo) { return st.lista.filter(x => !g || g === 'Todos' || (x.indices || []).includes(g)); }
   function pintarGrupos() {
     $('grupos').innerHTML = GRUPOS.filter(g => enGrupo(g).length).map(g =>

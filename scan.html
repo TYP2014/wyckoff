@@ -71,6 +71,10 @@
   <p class="exp">Zonas que has pedido vigilar. El corte cuenta con el <b>cierre diario</b> al otro lado de la zona.</p>
   <div id="ale"></div>
 
+  <h2>Índices: cómo va cada mercado <small id="nIdx"></small></h2>
+  <p class="exp">Contexto de arriba abajo antes de mirar valores. Futuros de EE. UU. (mini S&amp;P, mini Nasdaq, mini Dow, mini Russell) con volumen real. IBEX, Euro Stoxx y DAX van como índice de contado: Yahoo no da sus futuros y a veces tampoco su volumen.</p>
+  <div id="idx"></div>
+
   <h2>Selección: los mejores escenarios según los cursos <small id="nSel"></small></h2>
   <p class="exp">Cada valor pasa por los <b>5 pasos de Schroeder</b>: 1) a favor de la línea de menor resistencia (mensual, semanal y diario), 2) fuerza frente a su índice, 3) causa (rango o acumulación; trinchera defendida muchas veces), 4) sitio (en la trinchera de soporte, en el back o pegado a la resistencia que hay que romper) y 5) timing (spring con intención, rotura con intención, corrección sin volumen). ✓ = 2 puntos, ½ = 1. Las <b>trincheras</b> son zonas, no precios exactos: toques, veces defendida y volumen en los toques. Entradas: <b>agresiva</b> tras el spring, <b>conservadora</b> si rompe la trinchera de arriba, <b>60 min</b> para afinar con la resistencia intradía. ● = cumple lo que funcionó en la prueba histórica (2018-2026: rotura de trinchera fuerte +0,43R de media; spring con intención +0,26R). Siempre hay probabilidad de perder: el stop es parte de la entrada.</p>
   <div class="rejilla" id="sel"></div>
@@ -226,7 +230,16 @@
       <td class="n">${nf(a.desde)} – ${nf(a.hasta)} ${a.sentido === 'baja' ? '↓' : '↑'}</td>
       <td><b class="${col[a.estado] || ''}">${a.estado === 'cortado' ? 'CORTADA' : a.estado === 'en zona' ? 'En la zona' : 'Esperando'}</b><br><span style="font-size:14px">${a.txt}</span></td>
       <td style="font-size:14px">${a.nota || ''}</td></tr>`).join('') + '</table>' : '<div class="vacio">Ninguna</div>';
-    datos = j.valores; datos.forEach(x => { x.indices = ind[x.symbol] || [x.mercado]; });
+    const IDX = j.valores.filter(x => x.tipo === 'indice'), TC = t => t === 'alcista' ? 'up' : t === 'bajista' ? 'down' : 'flat';
+    $('nIdx').textContent = `(${IDX.length})`;
+    $('idx').innerHTML = IDX.length ? `<table><tr><th>Índice</th><th>Cierre</th><th>Día</th><th>Mensual</th><th>Semanal</th><th>Diario</th><th>Fase</th><th></th></tr>` + IDX.map(x => `<tr>
+      <td><a href="index.html?s=${encodeURIComponent(x.symbol)}&tf=1d">${x.nombre}</a></td><td class="n">${nf(x.cierre)}</td>
+      <td class="n ${x.var >= 0 ? 'up' : 'down'}">${x.var >= 0 ? '+' : ''}${nf(x.var)} %</td>
+      <td class="${TC(x.tendM)}">${x.tendM || '—'}</td><td class="${TC(x.tendS)}">${x.tendS || '—'}</td><td class="${TC(x.tendD)}">${x.tendD || '—'}</td>
+      <td style="font-size:12.5px">${x.fase || ''}</td>
+      <td><a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}&tf=1wk">Semanal</a> <a class="btn" href="index.html?s=${encodeURIComponent(x.symbol)}&tf=60m">60 min</a></td></tr>`).join('') + '</table>'
+      : '<div class="vacio">Llegan con la próxima actualización de datos</div>';
+    datos = j.valores.filter(x => x.tipo !== 'indice'); datos.forEach(x => { x.indices = ind[x.symbol] || [x.mercado]; });
     if (mercado !== 'Todos' && !datos.some(x => x.indices.includes(mercado))) mercado = 'Todos';
     $('fecha').textContent = `${datos.length} valores · calculado el ${new Date(j.generado).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`;
     pintar();
