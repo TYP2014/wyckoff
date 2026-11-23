@@ -78,5 +78,12 @@
   {"symbol": "TEF.MC", "nombre": "Telefónica", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]},
   {"symbol": "TRE.MC", "nombre": "Técnicas Reunidas", "mercado": "España", "divisa": "EUR", "indices": ["Mercado Continuo"]},
   {"symbol": "UNI.MC", "nombre": "Unicaja", "mercado": "España", "divisa": "EUR", "indices": ["IBEX 35"]},
-  {"symbol": "AOS", "nombre": "A. O. Smith", "mercado": "USA", "divisa": "USD", "indices": ["S&P 500"]}
+  {"symbol": "AOS", "nombre": "A. O. Smith", "mercado": "USA", "divisa": "USD", "indices": ["S&P 500"]},
+  {"symbol": "ES", "yahoo": "ES=F", "nombre": "Mini S&P 500 (futuro)", "mercado": "Índice", "divisa": "USD", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "NQ", "yahoo": "NQ=F", "nombre": "Mini Nasdaq 100 (futuro)", "mercado": "Índice", "divisa": "USD", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "YM", "yahoo": "YM=F", "nombre": "Mini Dow Jones (futuro)", "mercado": "Índice", "divisa": "USD", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "RTY", "yahoo": "RTY=F", "nombre": "Mini Russell 2000 (futuro)", "mercado": "Índice", "divisa": "USD", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "IBEX35", "yahoo": "^IBEX", "nombre": "IBEX 35 (índice; sin futuro gratuito)", "mercado": "Índice", "divisa": "EUR", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "STOXX50", "yahoo": "^STOXX50E", "nombre": "Euro Stoxx 50 (índice; sin futuro gratuito)", "mercado": "Índice", "divisa": "EUR", "indices": ["Índices"], "tipo": "indice"},
+  {"symbol": "DAX", "yahoo": "^GDAXI", "nombre": "DAX alemán (índice; sin futuro gratuito)", "mercado": "Índice", "divisa": "EUR", "indices": ["Índices"], "tipo": "indice"}
 ]
