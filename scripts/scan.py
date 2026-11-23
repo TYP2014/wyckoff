@@ -106,6 +106,32 @@ def tendencia(b):
     return None
 
 
+def tendencia_mensual(b):
+    """Mensual: giros más finos (3 y 2 ATR) y una estructura nueva manda sobre la vieja. Si tras el último
+    suelo el precio hizo un techo por encima del anterior y sigue en la mitad alta del tramo, es alcista
+    aunque el suelo anterior quedara más abajo (IBEX tras 2020); y al revés para la bajista (Nike)."""
+    if not b or b["n"] < 10:
+        return None
+    a, c = atr(b), b["c"][-1]
+    for mult in (3, 2):
+        piv = zigzag(b, mult, a)
+        H = [p for p in piv if p["t"] == "H"]
+        L = [p for p in piv if p["t"] == "L"]
+        if len(H) >= 2 and len(L) >= 2:
+            hh, hl = H[-1]["p"] > H[-2]["p"], L[-1]["p"] > L[-2]["p"]
+            if hh and hl:
+                return "alcista"
+            if not hh and not hl:
+                return "bajista"
+            medio = (H[-1]["p"] + L[-1]["p"]) / 2
+            if hh and H[-1]["i"] > L[-1]["i"] and c > medio:
+                return "alcista"
+            if not hl and L[-1]["i"] > H[-1]["i"] and c < medio:
+                return "bajista"
+            return "rango"
+    return None
+
+
 def giros(b, ini, fin, k=4):
     """Maximos y minimos locales (extremo de +-k velas) entre ini y fin."""
     h, l, n, out = b["h"], b["l"], b["n"], []
@@ -297,7 +323,7 @@ def analizar(info):
     cierre = d["c"][-1]
     r = {"symbol": sym, "nombre": info.get("nombre", ""), "mercado": info.get("mercado", ""),
          "fecha": d["t"][-1], "cierre": round(cierre, 2), "var": round((cierre / d["c"][-2] - 1) * 100, 2),
-         "tendM": tendencia(m), "tendS": tendencia(w), "tendD": tendencia(d)}
+         "tendM": tendencia_mensual(m), "tendS": tendencia(w), "tendD": tendencia(d)}
     puntos, motivos = 0, []
     mayor = r["tendM"] == "alcista" and r["tendS"] == "alcista"
     if mayor:
@@ -383,6 +409,11 @@ def analizar(info):
 
     r["puntos"], r["motivos"], r["descartada"] = puntos, motivos, bool(dist)
     r["candidata"] = bool(mayor and not dist and puntos >= 6 and (reciente or ((en_fib or rango) and en_sop)))
+    if info.get("tipo") == "indice":           # índices y futuros: solo contexto de mercado, nunca candidatas
+        r["tipo"] = "indice"
+        r["candidata"] = False
+        r["entrada"] = r["patron"] = r["vigilar"] = None
+        r["sel"]["descartada"] = True
     return r
 
 

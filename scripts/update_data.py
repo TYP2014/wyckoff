@@ -93,7 +93,7 @@ def proveedor_tiingo(symbol: str) -> pd.DataFrame:
 
 
 def es_usa(symbol: str) -> bool:
-    return "." not in symbol and not symbol.startswith("^")
+    return "." not in symbol and "=" not in symbol and not symbol.startswith("^")
 
 
 def diario_usa(symbol: str) -> pd.DataFrame:
@@ -131,6 +131,8 @@ def diario_usa(symbol: str) -> pd.DataFrame:
 
 def limpiar(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["Open", "High", "Low", "Close"])
+    if "Volume" in df:                       # los índices a veces no traen volumen
+        df = df.assign(Volume=df["Volume"].fillna(0))
     df = df[(df["High"] >= df["Low"]) & (df["Close"] > 0)]
     df = df[~df.index.duplicated(keep="last")].sort_index()
     return df
@@ -202,17 +204,20 @@ def agrupar_intradia(df: pd.DataFrame, minutos: int) -> pd.DataFrame:
     return g.dropna(subset=["Open"])
 
 
-def actualizar(symbol: str) -> None:
-    if es_usa(symbol):
-        diario = diario_usa(symbol)
+def actualizar(symbol: str, yahoo: str = None) -> None:
+    """symbol = carpeta en data/ (y nombre en el graficador); yahoo = ticker real si es distinto
+    (índices y futuros: IBEX35 -> ^IBEX, ES -> ES=F)."""
+    ys = yahoo or symbol
+    if es_usa(ys):
+        diario = diario_usa(ys)
     else:
-        diario = limpiar(sin_zona(PROVEEDOR(symbol, "1d")))
+        diario = limpiar(sin_zona(PROVEEDOR(ys, "1d")))
     if len(diario) < 50:
         raise RuntimeError(f"{symbol}: datos diarios insuficientes ({len(diario)} barras)")
     diario.index = diario.index.normalize()
 
     try:
-        h60 = limpiar(sin_zona(PROVEEDOR(symbol, "60m")))
+        h60 = limpiar(sin_zona(PROVEEDOR(ys, "60m")))
     except Exception as e:  # sin 60m no se pierde el resto
         print(f"AVISO {symbol}: 60m no disponible ({e})", file=sys.stderr)
         h60 = None
@@ -234,7 +239,7 @@ def actualizar(symbol: str) -> None:
     # 5 / 15 / 30 min: una sola descarga de 5 min y se agrupa (asi las tres cuadran)
     cortos = {}
     try:
-        h5 = limpiar(sin_zona(PROVEEDOR(symbol, "5m")))
+        h5 = limpiar(sin_zona(PROVEEDOR(ys, "5m")))
         for tf, df in (("5m", h5), ("15m", agrupar_intradia(h5, 15)), ("30m", agrupar_intradia(h5, 30))):
             cortos[tf] = fusionar_60m(symbol, a_barras(df, True), tf)
             guardar(symbol, tf, cortos[tf])
@@ -263,11 +268,13 @@ def actualizar_indices() -> None:
 def main() -> int:
     if not sys.argv[1:]:
         actualizar_indices()
-    simbolos = sys.argv[1:] or [t["symbol"] for t in json.loads(CONFIG.read_text())]
+    lista = json.loads(CONFIG.read_text())
+    yahoo = {t["symbol"]: t.get("yahoo") for t in lista}
+    simbolos = sys.argv[1:] or [t["symbol"] for t in lista]
     errores = 0
     for s in simbolos:
         try:
-            actualizar(s)
+            actualizar(s, yahoo.get(s))
         except Exception as e:  # un valor que falla no para al resto
             errores += 1
             print(f"ERROR {s}: {e}", file=sys.stderr)
