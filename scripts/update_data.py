@@ -204,10 +204,40 @@ def agrupar_intradia(df: pd.DataFrame, minutos: int) -> pd.DataFrame:
     return g.dropna(subset=["Open"])
 
 
-def actualizar(symbol: str, yahoo: str = None) -> None:
+def seguimiento() -> set:
+    """Valores que, sin estar marcados como «completo», también llevan intradía:
+    los que el buscador destaca (candidata, entrada, patrón o selección >= 7) y los que tienen alerta de precio."""
+    out = set()
+    try:
+        for x in json.loads((DATA / "scan.json").read_text())["valores"]:
+            sel = x.get("sel") or {}
+            if x.get("candidata") or x.get("entrada") or x.get("patron") or (sel and not sel.get("descartada") and sel.get("nota", 0) >= 7):
+                out.add(x["symbol"])
+    except Exception:
+        pass
+    try:
+        out |= {a["symbol"] for a in json.loads((ROOT / "config" / "alertas.json").read_text())}
+    except Exception:
+        pass
+    return out
+
+
+def actualizar(symbol: str, yahoo: str = None, completo: bool = True) -> None:
     """symbol = carpeta en data/ (y nombre en el graficador); yahoo = ticker real si es distinto
-    (índices y futuros: IBEX35 -> ^IBEX, ES -> ES=F)."""
+    (índices y futuros: IBEX35 -> ^IBEX, ES -> ES=F).
+    completo = False: solo diario/semanal/mensual de Yahoo (resto del universo; así el repositorio no se llena
+    y no se gasta el cupo gratuito de Tiingo, 500 valores al mes)."""
     ys = yahoo or symbol
+    if not completo:
+        diario = limpiar(sin_zona(PROVEEDOR(ys, "1d")))
+        if len(diario) < 50:
+            raise RuntimeError(f"{symbol}: datos diarios insuficientes ({len(diario)} barras)")
+        diario.index = diario.index.normalize()
+        guardar(symbol, "1d", a_barras(diario, False))
+        guardar(symbol, "1wk", a_barras(agrupar(diario, "W-MON"), False))
+        guardar(symbol, "1mo", a_barras(agrupar(diario, "MS"), False))
+        print(f"OK {symbol}: diario {len(diario)} barras ({diario.index[0].date()} -> {diario.index[-1].date()}), sin intradía")
+        return
     if es_usa(ys):
         diario = diario_usa(ys)
     else:
@@ -270,15 +300,18 @@ def main() -> int:
         actualizar_indices()
     lista = json.loads(CONFIG.read_text())
     yahoo = {t["symbol"]: t.get("yahoo") for t in lista}
+    extra = seguimiento()
+    completo = {t["symbol"]: bool(t.get("completo")) or t["symbol"] in extra for t in lista}
     simbolos = sys.argv[1:] or [t["symbol"] for t in lista]
+    print(f"Universo: {len(simbolos)} valores, {sum(completo.get(s, True) for s in simbolos)} con intradía")
     errores = 0
     for s in simbolos:
         try:
-            actualizar(s, yahoo.get(s))
+            actualizar(s, yahoo.get(s), completo.get(s, True))
         except Exception as e:  # un valor que falla no para al resto
             errores += 1
             print(f"ERROR {s}: {e}", file=sys.stderr)
-        time.sleep(0.5)
+        time.sleep(0.5 if completo.get(s, True) else 0.2)
     print(f"Terminado: {len(simbolos) - errores} correctos, {errores} con error")
     return 1 if errores else 0
 

@@ -474,9 +474,17 @@ def referencias(lista):
 def main():
     lista = json.loads(CONFIG.read_text())
     referencias(lista)
-    out, errores = [], 0
+    out, errores, iliquidos = [], 0, []
     for info in lista:
         try:
+            # liquidez mínima (media de 50 sesiones de precio x volumen): EE. UU. 10 M$/día, España 0,5 M€/día
+            minimo = {"USA": 10e6, "España": 0.5e6}.get(info.get("mercado"))
+            d = cargar(info["symbol"], "1d") if minimo else None
+            if d and d["n"] >= 50:
+                efectivo = sum(c * v for c, v in zip(d["c"][-50:], d["v"][-50:])) / 50
+                if efectivo < minimo:
+                    iliquidos.append(info["symbol"])
+                    continue
             x = analizar(info)
             if x:
                 out.append(x)
@@ -493,6 +501,7 @@ def main():
     print(f"Patrones en soportes: {len(pat)} ({', '.join(pat)})")
     sel = sorted([x for x in out if x.get("sel") and not x["sel"]["descartada"]], key=lambda x: -x["sel"]["nota"])[:10]
     print("Selección: " + ", ".join(f"{x['symbol']} {x['sel']['nota']}/10" for x in sel))
+    print(f"Sin liquidez mínima (no se analizan): {len(iliquidos)} ({', '.join(iliquidos)})")
     print(f"Scan: {len(out)} valores, {len(cand)} candidatas ({', '.join(cand)}), {errores} errores")
     return 1 if errores else 0
 
