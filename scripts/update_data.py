@@ -309,6 +309,9 @@ def main() -> int:
         try:
             actualizar(s, yahoo.get(s), completo.get(s, True))
         except Exception as e:  # un valor que falla no para al resto
+            if "insuficientes" in str(e) or not completo.get(s, True):  # salida reciente o valor sin seguimiento: aviso, no fallo
+                print(f"AVISO {s}: {e}", file=sys.stderr)
+                continue
             errores += 1
             print(f"ERROR {s}: {e}", file=sys.stderr)
         time.sleep(0.5 if completo.get(s, True) else 0.2)
