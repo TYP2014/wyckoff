@@ -8,5 +8,13 @@
   {"symbol": "DIS", "desde": 123.4, "hasta": 124.7, "sentido": "baja", "alta": "2026-11-28",
    "nota": "Vigilar el back a la zona perforada (techo del rango 123,4-124,7): lo normal es que testeen la zona rota. Buscar llegada con volumen bajo y giro; cierre por debajo de 123,4 = el back falla"},
   {"symbol": "VRSN", "desde": 324.6, "hasta": 325, "sentido": "sube", "alta": "2026-11-28",
-   "nota": "Oferta dos veces en 324-325 (05/11 y 25/11). Esperar rotura con volumen y luego el back SIN VOLUMEN a 324-326 para entrar; stop por debajo de 316-317. Cierre < 299 con volumen = invalida"}
+   "nota": "Oferta dos veces en 324-325 (05/11 y 25/11). Esperar rotura con volumen y luego el back SIN VOLUMEN a 324-326 para entrar; stop por debajo de 316-317. Cierre < 299 con volumen = invalida"},
+  {"symbol": "MA", "desde": 681, "hasta": 682, "sentido": "sube", "alta": "2026-11-28",
+   "nota": "Corrección del 42 % (545 -> 682 -> 624) ya rebotando. Rotura del máximo 682 con volumen = confirma la continuación; mejor entrada en el back sin volumen"},
+  {"symbol": "MA", "desde": 624, "hasta": 624.2, "sentido": "baja", "alta": "2026-11-28",
+   "nota": "Cierre por debajo del mínimo de la corrección (624,11) = el rebote falla"},
+  {"symbol": "MCK", "desde": 1118, "hasta": 1121.5, "sentido": "sube", "alta": "2026-11-28",
+   "nota": "Corrección del 47 % con volumen bajo (0,8x). Rotura del techo 1121,5 con volumen = continuación; mejor entrada en el back sin volumen"},
+  {"symbol": "MCK", "desde": 1042.8, "hasta": 1043, "sentido": "baja", "alta": "2026-11-28",
+   "nota": "Cierre por debajo del mínimo de la corrección (1042,86) = invalida"}
 ]
