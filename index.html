@@ -361,7 +361,7 @@
   //  absorción (naranja): volumen >= 2x media con rango estrecho (esfuerzo sin resultado)
   //  sin demanda (azul): sube con rango estrecho y volumen seco, junto a una resistencia de 3 toques o más
   //  sin oferta (verde): baja con rango estrecho y volumen seco, junto a un soporte de 3 toques o más
-  const marcasVol = LC.createSeriesMarkers(vol, []);
+  const marcasVol = LC.createSeriesMarkers(velas, []);  // flechas de lectura sobre las velas, no en el volumen
   function lecturaVol(b) {
     const M = [], A = atr(b), N = nivelesTodos(b).filter(x => x.n >= 3);
     const cerca = (p, A_, sop) => N.some(x => x.sop === sop && p >= x.lo - 0.5 * A_ && p <= x.hi + 0.5 * A_);
@@ -422,7 +422,7 @@
     vol.setData(b.map(x => ({ time: x.time, value: x.volume, color: colVol() })));
     const vm = []; let s = 0;
     for (let i = 0; i < b.length; i++) { s += b[i].volume; if (i >= 20) s -= b[i - 20].volume; if (i >= 19) vm.push({ time: b[i].time, value: s / 20 }); }
-    volMedia.setData(vm);
+    volMedia.setData([]);  // sin media en el volumen: solo las barras
     pintarLectura();
     chart.applyOptions({ timeScale: { timeVisible: INTRA(st.tf), secondsVisible: false } });
     ajustarPaneles(); cerrarInfo();
