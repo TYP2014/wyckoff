@@ -1050,7 +1050,7 @@
   }
   // posición del cursor en el gráfico: vela (puede ser más allá de la última) y precio
   // pn: 0 = precio, 1 = volumen. Si se pasa `fijo`, el punto se calcula dentro de ese panel (un dibujo no cambia de panel).
-  function pos(e, fijo, flecha) {
+  function pos(e, fijo, flecha, libre) {
     const paneles = chart.panes(), b = barras(); let pn = fijo, r = null;
     if (pn == null) {
       for (let k = 0; k < Math.min(2, paneles.length); k++) {
@@ -1065,7 +1065,7 @@
     const lg = chart.timeScale().coordinateToLogical(Math.max(0, Math.min(w, x))); let p = (pn ? vol : velas).coordinateToPrice(y);
     if (lg == null || p == null || !b.length) return null;
     const i = Math.max(0, Math.round(lg)), v = b[Math.min(i, b.length - 1)];
-    if (st.iman && i <= b.length - 1) p = pn ? v.volume : Math.abs(p - v.high) < Math.abs(p - v.low) ? v.high : v.low;
+    if (st.iman && !libre && i <= b.length - 1) p = pn ? v.volume : Math.abs(p - v.high) < Math.abs(p - v.low) ? v.high : v.low;
     return { x, y, i, p, pn, cx: e.clientX, cy: e.clientY };
   }
   function nueva(a, c, horizontal) {
@@ -1105,13 +1105,19 @@
     const d = dibs[h.k]; st.sel = h.k;
     arr = { tipo: 'editar', k: h.k, parte: h.parte, ini: m, movido: false,
       o: d.tipo === 'horiz' ? { p: d.p } : { ia: aIdx(d.a, d.tf), pa: d.a.p, ib: aIdx(d.b, d.tf), pb: d.b.p, oc: d.o || 0 } };
+    // punto de partida en el panel del propio dibujo (con el volumen integrado, una flecha del volumen se mide en volumen, no en precio)
+    // y sin imán si se mueve entero o es una flecha
+    arr.ini = pos(e, d.pn ? 1 : 0, false, h.parte === 'mover' || FLECHAS.includes(d.tipo)) || m;
     $('graf').classList.add('mano'); pintarDibujos();
   }, true);
   // si se ha cogido un dibujo, el gráfico no debe enterarse (no se desplaza)
   ['mousedown', 'touchstart'].forEach(ev => $('graf').addEventListener(ev, e => { if (arr && arr.tipo === 'editar') e.stopPropagation(); }, true));
 
   window.addEventListener('pointermove', e => {
-    const ancla = arr && arr.ini ? arr.ini : st.puntoA, m = pos(e, ancla ? ancla.pn : undefined);
+    const ancla = arr && arr.ini ? arr.ini : st.puntoA;
+    // al mover un dibujo entero o una flecha, el imán no actúa (si no, la flecha se queda pegada a la vela o a la barra de volumen)
+    const libre = arr && arr.tipo === 'editar' && (arr.parte === 'mover' || FLECHAS.includes(dibs[arr.k].tipo));
+    const m = pos(e, ancla ? ancla.pn : undefined, false, libre);
     if (arr && arr.tipo === 'editar') {
       if (!m) return;
       const d = dibs[arr.k], o = arr.o, di = m.i - arr.ini.i, dp = m.p - arr.ini.p; arr.movido = true;
@@ -1131,7 +1137,7 @@
         }
         if (arr.parte === 'a') { d.a = dePos(m.i, pm); d.b = dePos(o.ib, o.pb); }
         else if (arr.parte === 'b') { d.a = dePos(o.ia, o.pa); d.b = dePos(m.i, e.shiftKey && d.tipo === 'linea' ? o.pa : pm); }
-        else { d.a = dePos(o.ia + di, o.pa + dp); d.b = dePos(o.ib + di, o.pb + dp); }
+        else { const z = d.pn ? 0 : -Infinity; d.a = dePos(o.ia + di, Math.max(z, o.pa + dp)); d.b = dePos(o.ib + di, Math.max(z, o.pb + dp)); }   // en el volumen, no por debajo de cero
         d.tf = st.tf;
       }
       repintar(); return;
