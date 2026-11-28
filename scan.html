@@ -84,6 +84,10 @@
   <div id="ent"></div>
   <p class="exp" style="margin-top:8px"><b>Plan por operación:</b> entrar con riesgo fijo (p. ej. 1 % del capital: nº de acciones = 1 % del capital ÷ (entrada − stop)); sin objetivo fijo: cuando gana 1,5 veces el riesgo, el stop sube a ganancia (+0,25 veces el riesgo) y desde ahí sigue al mínimo de las 20 últimas sesiones (sale cuando pierde la inercia). El botón «Compra ficticia» lo deja preparado. <b>Prueba histórica</b> (79 valores, 2016-2026, 282 señales, con huecos de apertura incluidos): gana el 44 % de las operaciones (ganancia media 2,5 veces el riesgo) y pierde el 56 % (pérdida media 1,2 veces el riesgo, por los huecos); resultado medio +0,5 veces el riesgo por operación, +0,2 sin contar las 3 mejores; duración media 21 sesiones; racha máxima de 8 pérdidas seguidas.</p>
 
+  <h2>Cortos (CFD): distribución con señal de debilidad <small id="nCor"></small></h2>
+  <p class="exp">Solo valores líquidos (10 millones al día o más). Semanal bajista, o diario bajista/rango por debajo de la media de 200 sesiones. <b>SOW</b>: cierra por debajo del mínimo de 60 sesiones con volumen (1,3 veces o más). <b>LPSY</b>: rebote hacia la zona rota <b>sin volumen</b> (≤ 0,9 veces en las 3 últimas sesiones): es donde se vende. Si el precio recupera la zona rota más de un 2 %, sale de la lista (el SOW ha fallado). Se muestran los que tienen beneficio/riesgo de 1,5 o más. Objetivo prudente: el mínimo anterior más cercano, como mucho un 15 % por debajo. <b>Sin prueba histórica todavía</b>: confirma siempre en el gráfico.</p>
+  <div id="cor"></div>
+
   <h2>Patrones de Paco Gómez en soportes y resistencias <small id="nPat"></small></h2>
   <p class="exp">Tendencia semanal alcista. Dos patrones, de más a menos fiable en la prueba 2016-2026 (79 valores, plan de gestión, huecos incluidos):<br>
   <b>Engaño en soporte y test</b>: perfora un soporte de varios toques con <b>volumen alto</b> y lo recupera («trampa, engaño»); vuelve a la zona con <b>menos volumen</b> sin nuevo mínimo y hoy gira al alza. Stop bajo el mínimo del engaño. 169 señales, gana el 51 %, media +0,57 veces el riesgo (+0,39 sin las 3 mejores).<br>
@@ -195,6 +199,15 @@
       <div style="margin-top:8px"><a class="btn" href="index.html?s=${u}&tf=1d">Diario</a> <a class="btn" href="index.html?s=${u}&tf=60m">60 min</a> <a class="btn" href="index.html?s=${u}&tf=30m">30 min</a>
         ${m ? `<a class="btn" href="cartera.html?s=${u}&sl=${m.stop}&nota=${encodeURIComponent(`${cap1(m.tipo)}: entrada ${nf(m.entrada)}, stop ${nf(m.stop)}, objetivo ${nf(m.obj)}`)}">Compra ficticia</a>` : ''}</div></div>`;
   }
+  function tablaCortos(L) {
+    if (!L.length) return '<div class="vacio">Ninguno con beneficio/riesgo suficiente hoy.</div>';
+    return `<table><tr><th>Valor</th><th>Señal</th><th>Vender en</th><th>Stop</th><th>Objetivo</th><th>Beneficio/riesgo</th><th>Negociado/día</th></tr>` +
+      L.map(x => { const k = x.corto, f = d => `${d.slice(8,10)}/${d.slice(5,7)}`; return `<tr><td><a href="index.html?s=${encodeURIComponent(x.symbol)}">${x.symbol}</a><br><span style="color:var(--dim);font-size:14px">${x.nombre}</span></td>
+      <td style="font-size:14px">${k.lpsy ? '<b class="down">LPSY ahora</b>: rebote sin volumen (' + nf(k.vol3) + '×)' : 'Esperar el rebote sin volumen a la zona rota'}<br>SOW ${f(k.sow.fecha)}: rompe ${nf(k.sow.nivel)} con ${nf(k.sow.vol)}×${k.ut ? `<br>UT ${f(k.ut.fecha)} en ${nf(k.ut.nivel)} (${nf(k.ut.vol)}×)` : ''}${x.candidata ? '<br><b>Ojo</b>: el buscador también ve un spring (señal contraria)' : ''}</td>
+      <td class="n">${k.lpsy ? 'ahora ~' + nf(x.cierre) : nf(k.zona * 0.97) + ' – ' + nf(k.zona)}</td>
+      <td class="n">${nf(k.stop)}</td><td class="n">${nf(k.obj)}</td><td class="n"><b>${nf(k.br)}</b></td>
+      <td class="n">${nf(k.liq)} M</td></tr>`; }).join('') + '</table>';
+  }
   function pintar() {
     const D = datos.filter(x => mercado === 'Todos' || (x.indices || []).includes(mercado));
     const sel = D.filter(x => x.sel && !x.sel.descartada && x.sel.nota >= 7)
@@ -204,6 +217,8 @@
     const ent = D.filter(x => x.entrada).sort((a, b) => a.entrada.hace - b.entrada.hace || b.entrada.calidad - a.entrada.calidad);
     const vig = D.filter(x => x.vigilar).sort((a, b) => (b.vigilar.seca - a.vigilar.seca) || Math.abs(a.vigilar.retr - 50) - Math.abs(b.vigilar.retr - 50));
     $('nEnt').textContent = `(${ent.length})`; $('nVig').textContent = `(${vig.length})`;
+    const cor = D.filter(x => x.corto && x.corto.br >= 1.5).sort((a, b) => b.corto.lpsy - a.corto.lpsy || b.corto.br - a.corto.br);
+    $('nCor').textContent = `(${cor.length})`; $('cor').innerHTML = tablaCortos(cor);
     const pat = D.filter(x => x.patron).sort((a, b) => a.patron.hace - b.patron.hace);
     $('nPat').textContent = `(${pat.length})`; $('pat').innerHTML = tablaPatron(pat);
     $('ent').innerHTML = tablaEntradas(ent); $('vig').innerHTML = tablaVigilar(vig);
