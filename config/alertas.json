@@ -6,5 +6,7 @@
   {"symbol": "AOS", "desde": 62.9, "hasta": 63.4, "sentido": "baja", "alta": "2026-11-15",
    "nota": "Posición abierta: cierre por debajo de 62,90 (pierde la trinchera y el mínimo del spring del 11/11) = salir"},
   {"symbol": "DIS", "desde": 123.4, "hasta": 124.7, "sentido": "baja", "alta": "2026-11-28",
-   "nota": "Vigilar el back a la zona perforada (techo del rango 123,4-124,7): lo normal es que testeen la zona rota. Buscar llegada con volumen bajo y giro; cierre por debajo de 123,4 = el back falla"}
+   "nota": "Vigilar el back a la zona perforada (techo del rango 123,4-124,7): lo normal es que testeen la zona rota. Buscar llegada con volumen bajo y giro; cierre por debajo de 123,4 = el back falla"},
+  {"symbol": "VRSN", "desde": 324.6, "hasta": 325, "sentido": "sube", "alta": "2026-11-28",
+   "nota": "Oferta dos veces en 324-325 (05/11 y 25/11). Esperar rotura con volumen y luego el back SIN VOLUMEN a 324-326 para entrar; stop por debajo de 316-317. Cierre < 299 con volumen = invalida"}
 ]
