@@ -4,5 +4,7 @@
   {"symbol": "AOS", "desde": 67.9, "hasta": 69, "sentido": "sube", "alta": "2026-11-15",
    "nota": "Posición abierta (26 títulos a 65,70). Trinchera de 8 toques donde falló el 05/11: si la rompe con intención, la subida se confirma"},
   {"symbol": "AOS", "desde": 62.9, "hasta": 63.4, "sentido": "baja", "alta": "2026-11-15",
-   "nota": "Posición abierta: cierre por debajo de 62,90 (pierde la trinchera y el mínimo del spring del 11/11) = salir"}
+   "nota": "Posición abierta: cierre por debajo de 62,90 (pierde la trinchera y el mínimo del spring del 11/11) = salir"},
+  {"symbol": "DIS", "desde": 123.4, "hasta": 124.7, "sentido": "baja", "alta": "2026-11-28",
+   "nota": "Vigilar el back a la zona perforada (techo del rango 123,4-124,7): lo normal es que testeen la zona rota. Buscar llegada con volumen bajo y giro; cierre por debajo de 123,4 = el back falla"}
 ]
