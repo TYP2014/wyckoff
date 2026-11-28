@@ -4,6 +4,8 @@ on:
   schedule:
     # Lunes a viernes, 22:30 UTC (tras el cierre de Nueva York; Madrid ya ha cerrado)
     - cron: "30 22 * * 1-5"
+    # Martes a sábado, 07:15 UTC: segunda pasada (velas que Yahoo publica tarde, sobre todo Madrid)
+    - cron: "15 7 * * 2-6"
   workflow_dispatch:
 
 permissions:
@@ -23,6 +25,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python scripts/update_data.py
+        env:
+          TIINGO_TOKEN: ${{ secrets.TIINGO_TOKEN }}
       - name: Buscador Wyckoff (scan)
         if: always()
         run: python scripts/scan.py
