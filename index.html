@@ -78,7 +78,7 @@
     background: var(--amber); color: #fff; padding: 5px 12px; border-radius: 6px; font-size: 13px; }
   #info { position: absolute; z-index: 8; display: none; min-width: 190px; background: #fff; border: 1px solid #1c2330; border-radius: 6px;
     box-shadow: 0 6px 18px rgba(0,0,0,.18); padding: 6px 10px 8px; font-size: 12.5px; }
-  #info h3 { margin: 0 0 4px; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+  #info h3 { margin: 0 0 4px; font-size: 12.5px; display: flex; align-items: center; gap: 8px; cursor: move; user-select: none; }
   #info h3 button { margin-left: auto; padding: 0 6px; line-height: 18px; }
   #info td { padding: 1px 0; } #info td:first-child { color: var(--dim); padding-right: 14px; }
   #error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
@@ -1000,7 +1000,7 @@
     let s = 0, n = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { s += b[k].volume; n++; }
     const media = s / n, rel = media ? x.volume / media : null;
     const fila = (a, c, k) => `<tr><td>${a}</td><td class="${k || ''}">${c}</td></tr>`;
-    $('info').innerHTML = `<h3>${st.sym} · ${TF_NOMBRE[st.tf]}<button title="Cerrar">×</button></h3><table>` +
+    $('info').innerHTML = `<h3 title="Arrástralo por aquí. Doble clic: vuelve junto a la vela">${st.sym} · ${TF_NOMBRE[st.tf]}<button title="Cerrar">×</button></h3><table>` +
       fila('Fecha', fecha(e) + hora) + fila('Apertura', nf(x.open)) + fila('Máximo', nf(x.high)) + fila('Mínimo', nf(x.low)) + fila('Cierre', nf(x.close)) +
       (v == null ? '' : fila('Variación', (v >= 0 ? '+' : '') + nf(v) + ' %', cls)) +
       fila('Rango', nf(x.high - x.low) + ' (' + nf((x.high / x.low - 1) * 100) + ' %)') +
@@ -1009,9 +1009,31 @@
     const caja = $('info'), w = $('grafWrap').getBoundingClientRect(); caja.style.display = 'block';
     let izq = m.cx - w.left + 16, arriba = m.cy - w.top + 10;
     if (izq + caja.offsetWidth > chart.timeScale().width() - 4) izq = m.cx - w.left - caja.offsetWidth - 16;
-    caja.style.left = Math.max(4, izq) + 'px'; caja.style.top = Math.max(4, Math.min(w.height - caja.offsetHeight - 30, arriba)) + 'px';
+    const fijo = store.get('infoPos', null);       // si el usuario lo ha movido, se queda donde lo dejó
+    if (fijo) { izq = Math.min(fijo.x, w.width - caja.offsetWidth - 4); arriba = fijo.y; }
+    else if (izq + caja.offsetWidth > chart.timeScale().width() - 4) izq = m.cx - w.left - caja.offsetWidth - 16;
+    caja.style.left = Math.max(4, izq) + 'px'; caja.style.top = Math.max(4, Math.min(w.height - caja.offsetHeight - 4, arriba)) + 'px';
     st.vela = i; repintar();
   }
+  // arrastrar el recuadro por su título; doble clic en el título = vuelve a ir junto a la vela
+  (() => {
+    const caja = $('info'); let ini = null;
+    caja.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      if (!e.target.closest('h3') || e.target.tagName === 'BUTTON') return;
+      ini = { x: e.clientX, y: e.clientY, l: caja.offsetLeft, t: caja.offsetTop }; e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!ini) return;
+      const w = $('grafWrap').getBoundingClientRect();
+      const l = Math.max(0, Math.min(w.width - caja.offsetWidth, ini.l + e.clientX - ini.x));
+      const t = Math.max(0, Math.min(w.height - caja.offsetHeight, ini.t + e.clientY - ini.y));
+      caja.style.left = l + 'px'; caja.style.top = t + 'px';
+    });
+    window.addEventListener('mouseup', () => { if (ini) { store.set('infoPos', { x: caja.offsetLeft, y: caja.offsetTop }); ini = null; } });
+    caja.addEventListener('dblclick', e => { if (e.target.closest('h3')) { store.del('infoPos'); e.stopPropagation(); } });
+    ['click', 'pointerdown', 'pointerup'].forEach(ev => caja.addEventListener(ev, e => e.stopPropagation()));
+  })();
   $('info').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') cerrarInfo(); });
 
   // ---------- ratón sobre el gráfico: dibujar, seleccionar, mover, cambiar de tamaño
