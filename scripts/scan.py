@@ -471,14 +471,56 @@ def referencias(lista):
             BENCH[mercado] = (r3[len(r3) // 2], r6[len(r6) // 2])
 
 
+def corto(sym, x):
+    """Lado corto (CFD): distribución y caída en marcha, solo en valores líquidos.
+    UT = nuevo máximo de 60 sesiones con volumen >= 1,4x que cierra en el tercio bajo y luego vuelve por debajo.
+    SOW = cierre por debajo del mínimo de 60 sesiones con volumen >= 1,3x.
+    LPSY = tras el SOW, rebote hacia la zona perdida con volumen bajo: es donde se vende."""
+    d = cargar(sym, "1d")
+    if not d or d["n"] < 260 or x.get("tipo") == "indice":
+        return None
+    n, c, h, l, v, t = d["n"], d["c"], d["h"], d["l"], d["v"], d["t"]
+    vm = lambda i: (sum(v[max(0, i - 50):i]) / min(50, i)) or 1
+    sma200 = sum(c[-200:]) / 200
+    if not (x.get("tendS") == "bajista" or (x.get("tendD") in ("bajista", "rango") and c[-1] < sma200)):
+        return None
+    ut = sow = None
+    for i in range(n - 40, n):
+        hi60, lo60 = max(h[i - 60:i]), min(l[i - 60:i])
+        pos = (c[i] - l[i]) / ((h[i] - l[i]) or 1)
+        if h[i] > hi60 and v[i] >= 1.4 * vm(i) and pos < 0.4 and c[-1] < hi60:
+            ut = {"fecha": t[i], "nivel": round(h[i], 4), "vol": round(v[i] / vm(i), 1)}
+        if i >= n - 30 and c[i] < lo60 and v[i] >= 1.3 * vm(i):
+            sow = {"fecha": t[i], "nivel": round(lo60, 4), "vol": round(v[i] / vm(i), 1)}
+    if not sow:
+        return None
+    zona = sow["nivel"]
+    if c[-1] > zona * 1.02:   # ha recuperado el soporte roto: el SOW ha fallado (puede ser un spring), no es corto
+        return None
+    v3 = sum(v[-3:]) / 3 / vm(n - 3)
+    lpsy = zona * 0.94 <= c[-1] <= zona * 1.01 and v3 <= 0.9
+    isow = t.index(sow["fecha"])
+    # stop: por encima del rebote más alto desde el SOW (y al menos un 2 % por encima de la zona rota)
+    stop = round(max(max(h[isow:]), zona * 1.02) * 1.005, 4)
+    # objetivo: el mínimo relevante más cercano por debajo (último año, sin las 30 últimas sesiones);
+    # si no hay ninguno, la altura del rango roto proyectada hacia abajo
+    bajos = [l[i] for i in range(n - 250, n - 30) if l[i] == min(l[max(0, i - 10):i + 11]) and l[i] < min(c[-1], zona) * 0.97]
+    obj = round(max(bajos), 4) if bajos else round(zona - (max(h[isow - 60:isow]) - zona), 4)
+    entrada = min(c[-1], zona) if not lpsy else c[-1]
+    obj = round(max(obj, entrada * 0.85), 4)   # objetivo prudente: como mucho un 15 % de caída (medio plazo)
+    br = round((entrada - obj) / ((stop - entrada) or 1), 1)
+    return {"ut": ut, "sow": sow, "lpsy": lpsy, "vol3": round(v3, 1), "zona": zona, "stop": stop, "obj": obj, "br": br,
+            "liq": round(sum(c[i] * v[i] for i in range(n - 50, n)) / 50 / 1e6, 1)}
+
+
 def main():
     lista = json.loads(CONFIG.read_text())
     referencias(lista)
     out, errores, iliquidos = [], 0, []
     for info in lista:
         try:
-            # liquidez mínima (media de 50 sesiones de precio x volumen): EE. UU. 10 M$/día, España 0,5 M€/día
-            minimo = {"USA": 10e6, "España": 0.5e6}.get(info.get("mercado"))
+            # liquidez mínima (media de 50 sesiones de precio x volumen): 10 millones al día (USD en EE. UU., EUR en España), para tener contrapartida siempre
+            minimo = {"USA": 10e6, "España": 10e6}.get(info.get("mercado"))
             d = cargar(info["symbol"], "1d") if minimo else None
             if d and d["n"] >= 50:
                 efectivo = sum(c * v for c, v in zip(d["c"][-50:], d["v"][-50:])) / 50
@@ -487,6 +529,9 @@ def main():
                     continue
             x = analizar(info)
             if x:
+                cx = corto(info["symbol"], x)
+                if cx:
+                    x["corto"] = cx
                 out.append(x)
         except Exception as e:
             errores += 1
@@ -497,6 +542,8 @@ def main():
     cand = [x["symbol"] for x in out if x["candidata"]]
     ent = [x["symbol"] for x in out if x.get("entrada")]
     print(f"Entradas tras corrección: {len(ent)} ({', '.join(ent)})")
+    cor = [x["symbol"] for x in out if x.get("corto")]
+    print(f"Cortos (distribución con SOW): {len(cor)} ({', '.join(cor)})")
     pat = [x["symbol"] for x in out if x.get("patron")]
     print(f"Patrones en soportes: {len(pat)} ({', '.join(pat)})")
     sel = sorted([x for x in out if x.get("sel") and not x["sel"]["descartada"]], key=lambda x: -x["sel"]["nota"])[:10]
